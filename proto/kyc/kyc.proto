@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package kyc;
+
+option go_package = "github.com/abubakvr/payup-backend/proto/kyc;kycpb";
+
+service KYCService {
+    rpc GetKYCStatus (GetKYCStatusRequest) returns (GetKYCStatusResponse);
+}
+
+message GetKYCStatusRequest {
+    string user_id = 1;
+}
+
+message GetKYCStatusResponse {
+    string status = 1;
+}

@@ -1,0 +1,54 @@
+# --------------------
+# Go
+# --------------------
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Build output
+/bin/
+/dist/
+/out/
+
+# Go workspace & cache
+/pkg/
+/vendor/
+
+# Coverage & profiling
+*.out
+*.prof
+*.cov
+
+# --------------------
+# gRPC / Protobuf
+# --------------------
+# Generated files (OPTIONAL — see note below)
+# *.pb.go
+
+# --------------------
+# Env files / secrets
+# --------------------
+.env
+.env.*
+!.env.example
+
+# --------------------
+# Docker
+# --------------------
+docker-compose.override.yml
+
+# --------------------
+# OS / Editor
+# --------------------
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# --------------------
+# Logs
+# -------
