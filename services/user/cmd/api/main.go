@@ -15,7 +15,11 @@ func main() {
 	r := router.SetupRouter(cfg)
 
 	producer := kafka.NewProducer([]string{"redpanda:9092"})
-	producer.UserCreated([]byte(`{"user_id":"123","email":"test@payup.com"}`))
+	if err := producer.UserCreated([]byte(`{"user_id":"123","email":"test@payup.com"}`)); err != nil {
+		log.Printf("Kafka produce failed: %v", err)
+	} else {
+		log.Printf("Produced user-created event to user-events topic")
+	}
 
 	log.Printf("User service running on port %s", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {

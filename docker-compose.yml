@@ -6,16 +6,18 @@ services:
       - "8002:8002"   # HTTP
       - "9002:9002"   # gRPC
     depends_on:
-      - redpanda
+      redpanda:
+        condition: service_healthy
 
   user-service:
     build: ./services/user
     ports:
       - "8001:8001"
     depends_on:
-      - redpanda
+      redpanda:
+        condition: service_healthy
 
-  # Kafka/Redpanda
+  # Kafka/Redpanda (log level warn to avoid flooding; use 'info' or 'debug' if needed)
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v24.2.4
     container_name: redpanda
@@ -26,12 +28,19 @@ services:
       - --memory 1G
       - --reserve-memory 0M
       - --node-id 0
+      - --default-log-level=warn
       - --kafka-addr PLAINTEXT://0.0.0.0:9092
       - --advertise-kafka-addr PLAINTEXT://redpanda:9092
     ports:
       - "9092:9092"
     volumes:
       - redpanda_data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
 volumes:
   redpanda_data:

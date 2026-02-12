@@ -16,7 +16,7 @@ func NewConsumer(brokers []string) *Consumer {
 	return &Consumer{
 		reader: kafka.NewReader(kafka.ReaderConfig{
 			Brokers: brokers,
-			Topic:   "user-created",
+			Topic:   "user-events",
 			GroupID: "kyc-service",
 		}),
 	}
