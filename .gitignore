@@ -35,6 +35,8 @@
 .env
 .env.*
 !.env.example
+/infra/postgres/postgres.env
+**/.env
 
 # --------------------
 # Docker
