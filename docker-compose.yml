@@ -17,6 +17,22 @@ services:
       retries: 5
       start_period: 15s
 
+  redis:
+    image: redis:8-alpine
+    container_name: payup-redis
+    command: ["redis-server", "--save", "", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - payup-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # Migrate services
   user-migrate:
     image: migrate/migrate:v4.16.0
     env_file:
@@ -70,7 +86,6 @@ services:
       kyc-migrate:
         condition: service_completed_successfully
 
-
   # Create Kafka topic(s) before app services start
   kafka-init:
     image: docker.redpanda.com/redpandadata/redpanda:v24.2.4
@@ -108,10 +123,9 @@ services:
       retries: 10
       start_period: 15s
 
-  
-
 volumes:
   redpanda_data:
+  redis_data:
   pgdata:
 
 networks:

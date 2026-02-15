@@ -8,11 +8,14 @@ import (
 	"github.com/abubakvr/payup-backend/services/user/internal/config"
 	"github.com/abubakvr/payup-backend/services/user/internal/kafka"
 	"github.com/abubakvr/payup-backend/services/user/internal/router"
+	"github.com/abubakvr/payup-backend/services/user/redis"
 )
 
 func main() {
 	cfg := config.LoadConfig()
 	r := router.SetupRouter(cfg)
+
+	redis.InitRedis()
 
 	producer := kafka.NewProducer([]string{"redpanda:9092"})
 	if err := producer.UserCreated([]byte(`{"user_id":"123","email":"test@payup.com"}`)); err != nil {
