@@ -52,8 +52,6 @@ services:
     environment:
       KAFKA_BROKER: redpanda:9092
       AUDIT_DATABASE_URL: ${AUDIT_DATABASE_URL}
-    ports:
-      - "8003:8003"
     networks:
       - payup-internal
     depends_on:
