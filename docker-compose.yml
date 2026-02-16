@@ -151,6 +151,20 @@ services:
       retries: 10
       start_period: 15s
 
+  api-gateway:
+    image: nginx:alpine
+    container_name: payup-api-gateway
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    networks:
+      - payup-internal
+    depends_on:
+      - user-service
+      - kyc-service
+      - audit-service
+
 volumes:
   redpanda_data:
   redis_data:
