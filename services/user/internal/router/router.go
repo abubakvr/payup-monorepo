@@ -15,6 +15,7 @@ func SetupRouter(cfg *config.Config) *http.ServeMux {
 		w.Write([]byte("User Service is healthy"))
 	})
 
+	mux.HandleFunc("/auth/validate", controller.AuthValidate)
 	mux.HandleFunc("/register", controller.RegisterUser)
 
 	return mux

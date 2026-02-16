@@ -8,6 +8,12 @@ import (
 	"github.com/abubakvr/payup-backend/services/user/internal/service"
 )
 
+// AuthValidate is called by the API gateway (nginx auth_request) to validate the request. Returns 200 to allow, 401 to deny.
+func AuthValidate(w http.ResponseWriter, r *http.Request) {
+	// Stub: allow all. Replace with JWT/session validation later.
+	w.WriteHeader(http.StatusOK)
+}
+
 func RegisterUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
