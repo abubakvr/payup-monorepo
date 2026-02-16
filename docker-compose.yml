@@ -32,6 +32,34 @@ services:
       retries: 5
       start_period: 5s
 
+  audit-migrate:
+    image: migrate/migrate:v4.16.0
+    env_file:
+      - .env
+    entrypoint: ["sh", "-c"]
+    command:
+      - "migrate -path /migrations -database \"postgres://$$AUDIT_DB_USER:$$AUDIT_DB_PASSWORD@$$AUDIT_DB_HOST:$$AUDIT_DB_PORT/$$AUDIT_DB_NAME?sslmode=$$AUDIT_DB_SSLMODE\" up"
+    volumes:
+      - ./services/audit/migrations:/migrations
+    networks:
+      - payup-internal
+    depends_on:
+      payup-postgres2:
+        condition: service_healthy
+
+  audit-service:
+    build: ./services/audit
+    environment:
+      KAFKA_BROKER: redpanda:9092
+      AUDIT_DATABASE_URL: ${AUDIT_DATABASE_URL}
+    networks:
+      - payup-internal
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      audit-migrate:
+        condition: service_completed_successfully
+
   # Migrate services
   user-migrate:
     image: migrate/migrate:v4.16.0

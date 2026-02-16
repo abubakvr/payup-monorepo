@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package audit;
+
+service AuditService {
+    rpc GetUserAudits (UserAuditRequest) returns (AuditResponse);
+}
+
+message UserAuditRequest {
+    string user_id = 1;
+}
+
+message AuditLog {
+    sting service = 1;
+    string action = 2;
+    string action = 3;
+    string created_at = 4;
+}
+
+message AuditResponse {
+    repeated AuditLog logs = 1;
+}

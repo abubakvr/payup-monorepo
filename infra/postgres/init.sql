@@ -14,3 +14,12 @@ GRANT ALL PRIVILEGES ON DATABASE kyc_db TO kyc_service;
 \c kyc_db
 GRANT USAGE ON SCHEMA public TO kyc_service;
 GRANT CREATE ON SCHEMA public TO kyc_service;
+
+-- AUDIT SERVICE
+\c postgres
+CREATE DATABASE audit_db;
+CREATE USER audit_service WITH PASSWORD 'audit_password';
+GRANT ALL PRIVILEGES ON DATABASE audit_db TO audit_service;
+\c audit_db
+GRANT USAGE ON SCHEMA public TO audit_service;
+GRANT CREATE ON SCHEMA public TO audit_service;

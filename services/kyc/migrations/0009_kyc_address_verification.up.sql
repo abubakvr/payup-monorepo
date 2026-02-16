@@ -12,7 +12,7 @@ CREATE TABLE kyc_address_verification (
   reversed_geo_address BYTEA NOT NULL,
   address_match BOOLEAN,
 
-  verification_status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  verification_status VARCHAR(20) NOT NULL DEFAULT 'not started',
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
