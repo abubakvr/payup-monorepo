@@ -1,0 +1,30 @@
+openapi: 3.0.3
+info:
+  title: Common API
+  version: 0.0.0
+paths:
+  /_:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+components:
+  schemas:
+    ApiResponse:
+      type: object
+      required: [status, message, responseCode]
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+        responseCode:
+          type: string
+          example: "01"
+        data:
+          nullable: true

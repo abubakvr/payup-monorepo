@@ -23,12 +23,12 @@ func NewUserService(userRepo *repository.UserRepository, tokenGen repository.Tok
 }
 
 func (s *UserService) CreateUser(ctx context.Context, email, password, firstName, lastName, phoneNumber string) (string, error) {
-	exists, err := s.userRepo.GetUserByEmail(email)
+	emailExists, err := s.userRepo.GetUserByEmail(email)
 	if err != nil {
 		return "", err
 	}
-	if exists != nil {
-		return "", errors.New("user already exists")
+	if emailExists != nil {
+		return "", errors.New("user with this email already exists")
 	}
 
 	hashedPassword, err := passwd.HashPassword(password)
@@ -36,9 +36,17 @@ func (s *UserService) CreateUser(ctx context.Context, email, password, firstName
 		return "", err
 	}
 
-	userID := uuid.New().String()
 	h := sha256.Sum256([]byte(phoneNumber))
 	phoneHash := hex.EncodeToString(h[:])
+	existingByPhoneHash, err := s.userRepo.GetUserByPhoneNumberHash(phoneHash)
+	if err != nil {
+		return "", err
+	}
+	if existingByPhoneHash != nil {
+		return "", errors.New("user with this phone number already exists")
+	}
+
+	userID := uuid.New().String()
 	user := model.User{
 		ID:              userID,
 		Email:           email,

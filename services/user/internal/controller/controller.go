@@ -6,9 +6,11 @@ import (
 	"strings"
 
 	"github.com/abubakvr/payup-backend/services/user/internal/auth"
+	"github.com/abubakvr/payup-backend/services/user/internal/common/response"
 	"github.com/abubakvr/payup-backend/services/user/internal/dto"
 	"github.com/abubakvr/payup-backend/services/user/internal/repository"
 	"github.com/abubakvr/payup-backend/services/user/internal/service"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -59,35 +61,40 @@ func isPublicPath(uri string) bool {
 func (c *UserController) RegisterUser(ctx *gin.Context) {
 	var req dto.RegisterRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		// ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		response.ErrorResponse(ctx, string(response.ValidationError), "Invalid request")
 		return
 	}
 
-	// Map Name to FirstName; LastName and PhoneNumber left empty for now.
-	_, err := c.svc.CreateUser(ctx.Request.Context(), req.Email, req.Password, req.Name, "", "")
+	_, err := c.svc.CreateUser(ctx.Request.Context(), req.Email, req.Password, req.Name, req.LastName, req.PhoneNumber)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, gin.H{"message": "User registered"})
+	// ctx.JSON(http.StatusCreated, gin.H{"message": "User registered"})
+	response.SuccessResponse(ctx, string(response.Success), "User registered", nil)
 }
 
 // Login handles POST /login and returns tokens via the service.
 func (c *UserController) Login(ctx *gin.Context) {
 	var req dto.LoginRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		// ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		response.ErrorResponse(ctx, string(response.ValidationError), "Invalid request")
 		return
 	}
 
 	resp, err := c.svc.Login(ctx.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, repository.ErrInvalidCredentials) {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
+			// ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
+			response.ErrorResponse(ctx, string(response.AuthenticationFailed), "invalid email or password")
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
 		return
 	}
 

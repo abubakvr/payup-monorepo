@@ -95,6 +95,28 @@ func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
 	return &user, nil
 }
 
+func (r *UserRepository) GetUserByPhoneNumber(phoneNumber string) (*model.User, error) {
+	query := `SELECT id, email, first_name, last_name, phone_number, phone_number_hash, password_hash, email_verified, created_at, updated_at FROM users WHERE phone_number = $1`
+	row := r.db.QueryRow(query, phoneNumber)
+	var user model.User
+	err := row.Scan(&user.ID, &user.Email, &user.FirstName, &user.LastName, &user.PhoneNumber, &user.PhoneNumberHash, &user.PasswordHash, &user.EmailVerified, &user.CreatedAt, &user.UpdatedAt)
+	return &user, err
+}
+
+func (r *UserRepository) GetUserByPhoneNumberHash(phoneHash string) (*model.User, error) {
+	query := `SELECT id, email, first_name, last_name, phone_number, phone_number_hash, password_hash, email_verified, created_at, updated_at FROM users WHERE phone_number_hash = $1`
+	row := r.db.QueryRow(query, phoneHash)
+	var user model.User
+	err := row.Scan(&user.ID, &user.Email, &user.FirstName, &user.LastName, &user.PhoneNumber, &user.PhoneNumberHash, &user.PasswordHash, &user.EmailVerified, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (r *UserRepository) GetUserByID(id string) (*model.User, error) {
 	query := `SELECT id, email, first_name, last_name, phone_number, phone_number_hash, password_hash, email_verified, created_at, updated_at FROM users WHERE id = $1`
 	row := r.db.QueryRow(query, id)
