@@ -7,7 +7,7 @@ CREATE TABLE users (
   first_name BYTEA NOT NULL,
   last_name BYTEA NOT NULL,
 
-  phone_number_enc BYTEA NOT NULL,
+  phone_number BYTEA NOT NULL,
   phone_number_hash CHAR(64) NOT NULL,
 
   email_verified BOOLEAN DEFAULT false,

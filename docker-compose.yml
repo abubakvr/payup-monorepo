@@ -82,6 +82,8 @@ services:
 
   user-service:
     build: ./services/user
+    env_file:
+      - .env
     networks:
       - payup-internal
     depends_on:

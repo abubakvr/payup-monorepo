@@ -5,18 +5,19 @@ import (
 
 	"github.com/abubakvr/payup-backend/services/user/internal/config"
 	"github.com/abubakvr/payup-backend/services/user/internal/controller"
+	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter(cfg *config.Config) *http.ServeMux {
-	mux := http.NewServeMux()
+func SetupRouter(cfg *config.Config, ctrl *controller.UserController) *gin.Engine {
+	router := gin.Default()
 
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("User Service is healthy"))
+	router.GET("/health", func(c *gin.Context) {
+		c.String(http.StatusOK, "User Service is healthy")
 	})
 
-	mux.HandleFunc("/auth/validate", controller.AuthValidate)
-	mux.HandleFunc("/register", controller.RegisterUser)
+	router.GET("/auth/validate", ctrl.AuthValidate)
+	router.POST("/register", ctrl.RegisterUser)
+	router.POST("/login", ctrl.Login)
 
-	return mux
+	return router
 }
