@@ -11,6 +11,23 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+func logAuditEvent(event model.AuditEvent) {
+	userID := "<nil>"
+	if event.UserID != nil {
+		userID = *event.UserID
+	}
+	entityID := "<nil>"
+	if event.EntityID != nil {
+		entityID = *event.EntityID
+	}
+	correlationID := "<nil>"
+	if event.CorrelationID != nil {
+		correlationID = *event.CorrelationID
+	}
+	log.Printf("audit received: service=%s action=%s entity=%s entity_id=%s user_id=%s correlation_id=%s timestamp=%s metadata=%v",
+		event.Service, event.Action, event.Entity, entityID, userID, correlationID, event.Timestamp.Format("2006-01-02T15:04:05.000Z07:00"), event.Metadata)
+}
+
 type Consumer struct {
 	reader  *kafka.Reader
 	service *service.AuditService
@@ -41,8 +58,10 @@ func (c *Consumer) Start() {
 			continue
 		}
 
+		logAuditEvent(event)
+
 		if err := c.service.ProcessAuditEvent(event); err != nil {
-			log.Println("Failed tp save audit log:", err)
+			log.Println("Failed to save audit log:", err)
 		}
 	}
 }

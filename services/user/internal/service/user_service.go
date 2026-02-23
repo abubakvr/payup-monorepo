@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/abubakvr/payup-backend/services/user/internal/kafka"
 	"github.com/abubakvr/payup-backend/services/user/internal/model"
 	passwd "github.com/abubakvr/payup-backend/services/user/internal/password"
 	"github.com/abubakvr/payup-backend/services/user/internal/repository"
@@ -16,10 +17,11 @@ import (
 type UserService struct {
 	userRepo *repository.UserRepository
 	tokenGen repository.TokenGenerator
+	producer *kafka.Producer
 }
 
-func NewUserService(userRepo *repository.UserRepository, tokenGen repository.TokenGenerator) *UserService {
-	return &UserService{userRepo: userRepo, tokenGen: tokenGen}
+func NewUserService(userRepo *repository.UserRepository, tokenGen repository.TokenGenerator, producer *kafka.Producer) *UserService {
+	return &UserService{userRepo: userRepo, tokenGen: tokenGen, producer: producer}
 }
 
 func (s *UserService) CreateUser(ctx context.Context, email, password, firstName, lastName, phoneNumber string) (string, error) {
@@ -80,6 +82,15 @@ func (s *UserService) CreateUser(ctx context.Context, email, password, firstName
 		return "", err
 	}
 
+	_ = s.producer.SendAuditLog(kafka.AuditLogParams{
+		Service:  "user",
+		Action:   "registration",
+		Entity:   "user",
+		EntityID: userID,
+		UserID:   &userID,
+		Metadata: map[string]interface{}{"email": email},
+	})
+
 	return token, nil
 }
 
@@ -106,6 +117,16 @@ func (s *UserService) Login(ctx context.Context, email, password string) (*model
 	if err != nil {
 		return nil, err
 	}
+
+	_ = s.producer.SendAuditLog(kafka.AuditLogParams{
+		Service:  "user",
+		Action:   "login",
+		Entity:   "user",
+		EntityID: user.ID,
+		UserID:   &user.ID,
+		Metadata: map[string]interface{}{"email": user.Email},
+	})
+
 	return &model.LoginResponse{
 		AccessToken:      accessToken,
 		RefreshToken:     refreshToken,
@@ -168,3 +189,4 @@ func (s *UserService) RefreshToken(ctx context.Context, token string) (string, e
 	}
 	return "", nil
 }
+

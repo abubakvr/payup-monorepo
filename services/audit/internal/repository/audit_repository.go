@@ -3,7 +3,6 @@ package repository
 import (
 	"database/sql"
 	"encoding/json"
-	"time"
 
 	"github.com/abubakvr/payup-backend/services/audit/internal/model"
 )
@@ -65,38 +64,46 @@ func (r *AuditRepository) GetLogs(filter model.AuditFilter) ([]model.AuditEvent,
 	return logs, nil
 }
 
-func (r *AuditRepository) GetByUser(userId string) ([]model.AuditEvent, error) {
-	query := `SELECT id, service, action, entity, metadata, correlation_id, created_at FROM audit_logs WHERE user_id = $1 ORDER BY created_at DESC`
-
-	rows, err := r.db.Query(query, userId)
-
+func (r *AuditRepository) GetAll() ([]model.AuditEvent, error) {
+	query := `SELECT service, user_id, action, entity, entity_id, metadata, correlation_id, created_at FROM audit_logs ORDER BY created_at DESC`
+	rows, err := r.db.Query(query)
 	if err != nil {
 		return nil, err
 	}
-
 	defer rows.Close()
-	var logs []model.AuditEvent
+	return scanAuditRows(rows)
+}
 
-	for rows.Next() {
-		var id int64
-		var service, action, entity, correlationId string
-		var metadataRaw []byte
-		var createdAt time.Time
-
-		rows.Scan(&id, &service, &action, &entity, &metadataRaw, &correlationId, &createdAt)
-
-		var metadata map[string]interface{}
-		json.Unmarshal(metadataRaw, &metadata)
-
-		logs = append(logs, model.AuditEvent{
-			Service:       service,
-			Action:        action,
-			Entity:        entity,
-			Metadata:      metadata,
-			CorrelationID: &correlationId,
-			Timestamp:     createdAt,
-		})
+func (r *AuditRepository) GetByUser(userId string) ([]model.AuditEvent, error) {
+	query := `SELECT service, user_id, action, entity, entity_id, metadata, correlation_id, created_at FROM audit_logs WHERE user_id = $1 ORDER BY created_at DESC`
+	rows, err := r.db.Query(query, userId)
+	if err != nil {
+		return nil, err
 	}
+	defer rows.Close()
+	return scanAuditRows(rows)
+}
 
+func scanAuditRows(rows *sql.Rows) ([]model.AuditEvent, error) {
+	var logs []model.AuditEvent
+	for rows.Next() {
+		var e model.AuditEvent
+		var userID, entityID, correlationID sql.NullString
+		var metadataRaw []byte
+		if err := rows.Scan(&e.Service, &userID, &e.Action, &e.Entity, &entityID, &metadataRaw, &correlationID, &e.Timestamp); err != nil {
+			return nil, err
+		}
+		if userID.Valid {
+			e.UserID = &userID.String
+		}
+		if entityID.Valid {
+			e.EntityID = &entityID.String
+		}
+		if correlationID.Valid {
+			e.CorrelationID = &correlationID.String
+		}
+		_ = json.Unmarshal(metadataRaw, &e.Metadata)
+		logs = append(logs, e)
+	}
 	return logs, nil
 }

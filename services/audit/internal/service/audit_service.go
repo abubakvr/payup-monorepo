@@ -21,6 +21,10 @@ func (s *AuditService) GetLogs(filter model.AuditFilter) ([]model.AuditEvent, er
 	return s.repo.GetLogs(filter)
 }
 
+func (s *AuditService) GetAll() ([]model.AuditEvent, error) {
+	return s.repo.GetAll()
+}
+
 func (s *AuditService) GetByUser(userId string) ([]model.AuditEvent, error) {
 	return s.repo.GetByUser(userId)
 }
