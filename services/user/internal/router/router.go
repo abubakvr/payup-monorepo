@@ -18,6 +18,8 @@ func SetupRouter(cfg *config.Config, ctrl *controller.UserController) *gin.Engin
 	router.GET("/auth/validate", ctrl.AuthValidate)
 	router.POST("/register", ctrl.RegisterUser)
 	router.POST("/login", ctrl.Login)
+	router.POST("/verify-email", ctrl.VerifyEmail)
+	router.POST("/resend-verification", ctrl.ResendVerification)
 	router.POST("/forgot-password", ctrl.ForgotPassword)
 	router.POST("/reset-password", ctrl.ResetPassword)
 	router.POST("/change-password", ctrl.ChangePassword)

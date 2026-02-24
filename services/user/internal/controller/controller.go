@@ -65,15 +65,14 @@ func (c *UserController) RegisterUser(ctx *gin.Context) {
 		return
 	}
 
-	_, err := c.svc.CreateUser(ctx.Request.Context(), req.Email, req.Password, req.Name, req.LastName, req.PhoneNumber)
+	_, err := c.svc.CreateUser(ctx.Request.Context(), req.Email, req.Password, req.FirstName, req.LastName, req.PhoneNumber)
 	if err != nil {
 		// ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
 		return
 	}
 
-	// ctx.JSON(http.StatusCreated, gin.H{"message": "User registered"})
-	response.SuccessResponse(ctx, string(response.Success), "User registered", nil)
+	response.SuccessResponse(ctx, string(response.Success), "Account created. Please check your email to verify your account before logging in.", nil)
 }
 
 // Login handles POST /login and returns tokens via the service.
@@ -86,16 +85,64 @@ func (c *UserController) Login(ctx *gin.Context) {
 	resp, err := c.svc.Login(ctx.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, repository.ErrInvalidCredentials) {
-			// ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
 			response.ErrorResponse(ctx, string(response.AuthenticationFailed), "invalid email or password")
 			return
 		}
-		// ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if errors.Is(err, service.ErrEmailNotVerified) {
+			ctx.JSON(http.StatusForbidden, gin.H{
+				"status":       "error",
+				"message":      "Please verify your email before logging in",
+				"responseCode": string(response.AuthenticationFailed),
+				"data":         nil,
+			})
+			return
+		}
 		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
 		return
 	}
 
 	ctx.JSON(http.StatusOK, resp)
+}
+
+// VerifyEmail handles POST /verify-email with token from the verification link.
+func (c *UserController) VerifyEmail(ctx *gin.Context) {
+	var req struct {
+		Token string `json:"token" binding:"required"`
+	}
+	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
+		return
+	}
+	if err := c.svc.VerifyEmail(ctx.Request.Context(), req.Token); err != nil {
+		switch err.Error() {
+		case "invalid or expired token", "token already used", "token expired":
+			response.ErrorResponse(ctx, string(response.ValidationError), err.Error())
+			return
+		}
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
+		return
+	}
+	response.SuccessResponse(ctx, string(response.Success), "Email verified. You can now log in.", nil)
+}
+
+// ResendVerification handles POST /resend-verification (resend verification email).
+func (c *UserController) ResendVerification(ctx *gin.Context) {
+	var req dto.ForgotPasswordRequest
+	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
+		return
+	}
+	if err := c.svc.ResendEmailVerification(ctx.Request.Context(), req.Email); err != nil {
+		if err.Error() == "user not found" {
+			response.ErrorResponse(ctx, string(response.ValidationError), "user not found")
+			return
+		}
+		if err.Error() == "email already verified" {
+			response.SuccessResponse(ctx, string(response.Success), "Email is already verified. You can log in.", nil)
+			return
+		}
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
+		return
+	}
+	response.SuccessResponse(ctx, string(response.Success), "Verification email sent.", nil)
 }
 
 // ForgotPassword handles POST /forgot-password (request password reset email).

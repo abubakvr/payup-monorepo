@@ -25,7 +25,7 @@ func TestRegisterRequest_Validation(t *testing.T) {
 			req: dto.RegisterRequest{
 				Email:       "user@example.com",
 				Password:    "password123",
-				Name:        "John",
+				FirstName:   "John",
 				LastName:    "Doe",
 				PhoneNumber: "2348012345678",
 			},
@@ -35,7 +35,7 @@ func TestRegisterRequest_Validation(t *testing.T) {
 			name: "missing email",
 			req: dto.RegisterRequest{
 				Password:    "password123",
-				Name:        "John",
+				FirstName:   "John",
 				LastName:    "Doe",
 				PhoneNumber: "2348012345678",
 			},
@@ -46,7 +46,7 @@ func TestRegisterRequest_Validation(t *testing.T) {
 			req: dto.RegisterRequest{
 				Email:       "not-an-email",
 				Password:    "password123",
-				Name:        "John",
+				FirstName:   "John",
 				LastName:    "Doe",
 				PhoneNumber: "2348012345678",
 			},
@@ -57,14 +57,14 @@ func TestRegisterRequest_Validation(t *testing.T) {
 			req: dto.RegisterRequest{
 				Email:       "user@example.com",
 				Password:    "short",
-				Name:        "John",
+				FirstName:   "John",
 				LastName:    "Doe",
 				PhoneNumber: "2348012345678",
 			},
 			wantErr: true,
 		},
 		{
-			name: "missing name",
+			name: "missing first name",
 			req: dto.RegisterRequest{
 				Email:       "user@example.com",
 				Password:    "password123",
@@ -78,7 +78,7 @@ func TestRegisterRequest_Validation(t *testing.T) {
 			req: dto.RegisterRequest{
 				Email:       "user@example.com",
 				Password:    "password123",
-				Name:        string(make([]byte, 101)),
+				FirstName:   string(make([]byte, 101)),
 				LastName:    "Doe",
 				PhoneNumber: "2348012345678",
 			},
@@ -89,7 +89,7 @@ func TestRegisterRequest_Validation(t *testing.T) {
 			req: dto.RegisterRequest{
 				Email:       "user@example.com",
 				Password:    "password123",
-				Name:        "John",
+				FirstName:   "John",
 				LastName:    "Doe",
 				PhoneNumber: "123",
 			},

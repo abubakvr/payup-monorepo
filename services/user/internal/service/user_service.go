@@ -101,10 +101,13 @@ func (s *UserService) CreateUser(ctx context.Context, email, password, firstName
 		Metadata: map[string]interface{}{"email": email},
 	})
 
-	s.sendVerificationEmail(email, firstName, token)
+	s.sendVerificationEmail(email, firstName, lastName, token)
 
 	return token, nil
 }
+
+// ErrEmailNotVerified is returned when login is attempted before email verification.
+var ErrEmailNotVerified = errors.New("email not verified")
 
 func (s *UserService) Login(ctx context.Context, email, password string) (*model.LoginResponse, error) {
 	loginRequest := model.LoginRequest{
@@ -117,6 +120,9 @@ func (s *UserService) Login(ctx context.Context, email, password string) (*model
 	}
 	if user == nil {
 		return nil, errors.New("invalid email or password")
+	}
+	if !user.EmailVerified {
+		return nil, ErrEmailNotVerified
 	}
 	if !passwd.CheckPassword(loginRequest.Password, user.PasswordHash) {
 		return nil, errors.New("invalid email or password")
@@ -148,12 +154,26 @@ func (s *UserService) Login(ctx context.Context, email, password string) (*model
 }
 
 func (s *UserService) VerifyEmail(ctx context.Context, token string) error {
-	tokenDetails, err := s.userRepo.GetEmailVerificationToken(token)
+	hashed := sha256.Sum256([]byte(token))
+	tokenHashHex := hex.EncodeToString(hashed[:])
+	tokenDetails, err := s.userRepo.GetEmailVerificationToken(tokenHashHex)
 	if err != nil {
 		return err
 	}
 	if tokenDetails == nil {
-		return errors.New("invalid token")
+		return errors.New("invalid or expired token")
+	}
+	if tokenDetails.Used {
+		return errors.New("token already used")
+	}
+	if time.Now().After(tokenDetails.ExpiresAt) {
+		return errors.New("token expired")
+	}
+	if err := s.userRepo.SetEmailVerified(tokenDetails.UserID); err != nil {
+		return err
+	}
+	if err := s.userRepo.MarkEmailVerificationTokenUsed(tokenDetails.ID); err != nil {
+		return err
 	}
 	return nil
 }
@@ -166,6 +186,22 @@ func (s *UserService) ResendEmailVerification(ctx context.Context, email string)
 	if user == nil {
 		return errors.New("user not found")
 	}
+	if user.EmailVerified {
+		return errors.New("email already verified")
+	}
+	plainToken := uuid.New().String()
+	hashedToken := sha256.Sum256([]byte(plainToken))
+	tokenDetails := model.EmailVerificationToken{
+		UserID:    user.ID,
+		TokenHash: hashedToken,
+		ExpiresAt: time.Now().Add(time.Hour * 24),
+		Used:      false,
+		CreatedAt: time.Now(),
+	}
+	if err := s.userRepo.CreateEmailVerificationToken(tokenDetails); err != nil {
+		return err
+	}
+	s.sendVerificationEmail(user.Email, user.FirstName, user.LastName, plainToken)
 	return nil
 }
 
@@ -288,7 +324,7 @@ func (s *UserService) RefreshToken(ctx context.Context, token string) (string, e
 	return "", nil
 }
 
-func (s *UserService) sendVerificationEmail(to, firstName, token string) {
+func (s *UserService) sendVerificationEmail(to, firstName, lastName, token string) {
 	log.Printf("user service: sendVerificationEmail called to=%s firstName=%s token_len=%d baseURL_set=%v",
 		to, firstName, len(token), s.emailVerificationBaseURL != "")
 	if s.producer == nil {
@@ -309,16 +345,23 @@ func (s *UserService) sendVerificationEmail(to, firstName, token string) {
 	} else if link == "" {
 		link = "(set EMAIL_VERIFICATION_BASE_URL to enable link)"
 	}
+	fullName := firstName
+	if lastName != "" {
+		fullName = firstName + " " + lastName
+	}
 	subject := "Verify your email"
-	html := "<p>Hi " + firstName + ",</p><p>Please verify your email by clicking the link below:</p><p><a href=\"" + link + "\">Verify email</a></p><p>If you didn't create an account, you can ignore this email.</p>"
+	html := "<p>Hi " + fullName + ",</p><p>Please verify your email address by clicking the link below:</p><p><a href=\"" + link + "\">Verify email</a></p><p>If you didn't create an account, you can ignore this email.</p>"
 	ev := kafka.NotificationEvent{
 		Type:    "email_verification",
 		Channel: "email",
 		Metadata: map[string]interface{}{
-			"to":      to,
-			"subject": subject,
-			"html":    html,
-			"to_name": firstName,
+			"to":         to,
+			"subject":    subject,
+			"html":       html,
+			"to_name":    fullName,
+			"first_name": firstName,
+			"last_name":  lastName,
+			"email":      to,
 		},
 	}
 	log.Printf("user service: publishing notification event type=%s channel=%s to topic=notification-events", ev.Type, ev.Channel)

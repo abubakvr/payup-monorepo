@@ -131,12 +131,21 @@ func (r *UserRepository) GetUserByID(id string) (*model.User, error) {
 	return &user, nil
 }
 
-func (r *UserRepository) GetEmailVerificationToken(tokenHash string) (*model.EmailVerificationToken, error) {
+func (r *UserRepository) GetEmailVerificationToken(tokenHashHex string) (*model.EmailVerificationToken, error) {
 	query := `SELECT id, user_id, token_hash, expires_at, used, created_at FROM email_verification_tokens WHERE token_hash = $1`
-	row := r.db.QueryRow(query, tokenHash)
+	row := r.db.QueryRow(query, tokenHashHex)
 	var token model.EmailVerificationToken
-	err := row.Scan(&token.ID, &token.UserID, &token.TokenHash, &token.ExpiresAt, &token.Used, &token.CreatedAt)
-	return &token, err
+	var tokenHashStr string
+	err := row.Scan(&token.ID, &token.UserID, &tokenHashStr, &token.ExpiresAt, &token.Used, &token.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	decoded, err := hex.DecodeString(tokenHashStr)
+	if err != nil || len(decoded) != 32 {
+		return nil, errors.New("invalid token hash")
+	}
+	copy(token.TokenHash[:], decoded)
+	return &token, nil
 }
 
 func (r *UserRepository) GetPasswordResetToken(tokenHashHex string) (*model.PasswordResetToken, error) {
@@ -187,6 +196,27 @@ func (r *UserRepository) UpdatePassword(userID, passwordHash string, updatedAt t
 func (r *UserRepository) DeleteEmailVerificationToken(tokenHash string) error {
 	query := `DELETE FROM email_verification_tokens WHERE token_hash = $1`
 	_, err := r.db.Exec(query, tokenHash)
+	return err
+}
+
+// SetEmailVerified sets email_verified = true for the user. Returns error if no row updated.
+func (r *UserRepository) SetEmailVerified(userID string) error {
+	query := `UPDATE users SET email_verified = true, updated_at = $1 WHERE id = $2`
+	result, err := r.db.Exec(query, time.Now(), userID)
+	if err != nil {
+		return err
+	}
+	n, _ := result.RowsAffected()
+	if n != 1 {
+		return errors.New("user not found or update failed")
+	}
+	return nil
+}
+
+// MarkEmailVerificationTokenUsed marks the token as used by ID.
+func (r *UserRepository) MarkEmailVerificationTokenUsed(tokenID string) error {
+	query := `UPDATE email_verification_tokens SET used = true WHERE id = $1`
+	_, err := r.db.Exec(query, tokenID)
 	return err
 }
 
