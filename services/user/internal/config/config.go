@@ -9,8 +9,11 @@ import (
 )
 
 type Config struct {
-	Port        string
-	DatabaseURL string
+	Port                      string
+	DatabaseURL               string
+	KafkaBroker               string
+	EmailVerificationBaseURL   string
+	PasswordResetBaseURL      string
 }
 
 func LoadConfig() *Config {
@@ -30,9 +33,16 @@ func LoadConfig() *Config {
 			os.Getenv("USER_DB_SSLMODE"),
 		)
 	}
+	kafkaBroker := os.Getenv("KAFKA_BROKER")
+	if kafkaBroker == "" {
+		kafkaBroker = "redpanda:9092"
+	}
 	return &Config{
-		Port:        port,
-		DatabaseURL: dbURL,
+		Port:                    port,
+		DatabaseURL:             dbURL,
+		KafkaBroker:             kafkaBroker,
+		EmailVerificationBaseURL: os.Getenv("EMAIL_VERIFICATION_BASE_URL"),
+		PasswordResetBaseURL:    os.Getenv("PASSWORD_RESET_BASE_URL"),
 	}
 }
 

@@ -3,14 +3,23 @@ package kafka
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"time"
 
 	"github.com/segmentio/kafka-go"
 )
 
 type Producer struct {
-	writer      *kafka.Writer
-	auditWriter *kafka.Writer
+	writer           *kafka.Writer
+	auditWriter      *kafka.Writer
+	notificationWriter *kafka.Writer
+}
+
+// NotificationEvent is the payload for the notification-events topic (consumed by notification service).
+type NotificationEvent struct {
+	Type     string                 `json:"type"`
+	Channel  string                 `json:"channel"`
+	Metadata map[string]interface{} `json:"metadata"`
 }
 
 func NewProducer(brokers []string) *Producer {
@@ -22,6 +31,10 @@ func NewProducer(brokers []string) *Producer {
 		auditWriter: kafka.NewWriter(kafka.WriterConfig{
 			Brokers: brokers,
 			Topic:   "audit-events",
+		}),
+		notificationWriter: kafka.NewWriter(kafka.WriterConfig{
+			Brokers: brokers,
+			Topic:   "notification-events",
 		}),
 	}
 }
@@ -76,6 +89,28 @@ func (p *Producer) SendAuditLog(params AuditLogParams) error {
 		Timestamp:     time.Now(),
 	}
 	return p.SendAuditEvent(event)
+}
+
+// SendNotification publishes an event to the notification-events topic (email, sms, whatsapp).
+func (p *Producer) SendNotification(ev NotificationEvent) error {
+	if p == nil || p.notificationWriter == nil {
+		log.Printf("kafka: SendNotification no-op (producer or notificationWriter nil)")
+		return nil
+	}
+	payload, err := json.Marshal(ev)
+	if err != nil {
+		log.Printf("kafka: SendNotification marshal err=%v", err)
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err = p.notificationWriter.WriteMessages(ctx, kafka.Message{Value: payload})
+	if err != nil {
+		log.Printf("kafka: SendNotification WriteMessages err=%v", err)
+		return err
+	}
+	log.Printf("kafka: notification event written to notification-events type=%s channel=%s payload_len=%d", ev.Type, ev.Channel, len(payload))
+	return nil
 }
 
 func ptr(s string) *string {

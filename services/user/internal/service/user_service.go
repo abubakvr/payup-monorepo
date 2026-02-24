@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/abubakvr/payup-backend/services/user/internal/kafka"
@@ -15,13 +17,21 @@ import (
 )
 
 type UserService struct {
-	userRepo *repository.UserRepository
-	tokenGen repository.TokenGenerator
-	producer *kafka.Producer
+	userRepo                 *repository.UserRepository
+	tokenGen                 repository.TokenGenerator
+	producer                 *kafka.Producer
+	emailVerificationBaseURL string
+	passwordResetBaseURL     string
 }
 
-func NewUserService(userRepo *repository.UserRepository, tokenGen repository.TokenGenerator, producer *kafka.Producer) *UserService {
-	return &UserService{userRepo: userRepo, tokenGen: tokenGen, producer: producer}
+func NewUserService(userRepo *repository.UserRepository, tokenGen repository.TokenGenerator, producer *kafka.Producer, emailVerificationBaseURL, passwordResetBaseURL string) *UserService {
+	return &UserService{
+		userRepo:                 userRepo,
+		tokenGen:                 tokenGen,
+		producer:                 producer,
+		emailVerificationBaseURL: emailVerificationBaseURL,
+		passwordResetBaseURL:     passwordResetBaseURL,
+	}
 }
 
 func (s *UserService) CreateUser(ctx context.Context, email, password, firstName, lastName, phoneNumber string) (string, error) {
@@ -90,6 +100,8 @@ func (s *UserService) CreateUser(ctx context.Context, email, password, firstName
 		UserID:   &userID,
 		Metadata: map[string]interface{}{"email": email},
 	})
+
+	s.sendVerificationEmail(email, firstName, token)
 
 	return token, nil
 }
@@ -165,17 +177,103 @@ func (s *UserService) SendPasswordResetEmail(ctx context.Context, email string) 
 	if user == nil {
 		return errors.New("user not found")
 	}
+
+	plainToken := uuid.New().String()
+	hashedToken := sha256.Sum256([]byte(plainToken))
+	tokenDetails := model.PasswordResetToken{
+		UserID:    user.ID,
+		TokenHash: hashedToken,
+		ExpiresAt: time.Now().Add(time.Hour), // 1 hour
+		Used:      false,
+		CreatedAt: time.Now(),
+	}
+	if err := s.userRepo.CreatePasswordResetToken(tokenDetails); err != nil {
+		return err
+	}
+
+	_ = s.producer.SendAuditLog(kafka.AuditLogParams{
+		Service:  "user",
+		Action:   "password_reset_requested",
+		Entity:   "user",
+		EntityID: user.ID,
+		UserID:   &user.ID,
+		Metadata: map[string]interface{}{"email": email},
+	})
+
+	s.sendPasswordResetEmail(user.Email, user.FirstName, plainToken)
 	return nil
 }
 
 func (s *UserService) ResetPassword(ctx context.Context, token, newPassword string) error {
-	tokenDetails, err := s.userRepo.GetPasswordResetToken(token)
+	hashed := sha256.Sum256([]byte(token))
+	tokenHashHex := hex.EncodeToString(hashed[:])
+	tokenDetails, err := s.userRepo.GetPasswordResetToken(tokenHashHex)
 	if err != nil {
 		return err
 	}
 	if tokenDetails == nil {
-		return errors.New("invalid token")
+		return errors.New("invalid or expired token")
 	}
+	if tokenDetails.Used {
+		return errors.New("token already used")
+	}
+	if time.Now().After(tokenDetails.ExpiresAt) {
+		return errors.New("token expired")
+	}
+
+	hashedPassword, err := passwd.HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+	updatedAt := time.Now()
+	if err := s.userRepo.UpdatePassword(tokenDetails.UserID, hashedPassword, updatedAt); err != nil {
+		return err
+	}
+	if err := s.userRepo.MarkPasswordResetTokenUsed(tokenDetails.ID); err != nil {
+		return err
+	}
+
+	_ = s.producer.SendAuditLog(kafka.AuditLogParams{
+		Service:  "user",
+		Action:   "password_reset_completed",
+		Entity:   "user",
+		EntityID: tokenDetails.UserID,
+		UserID:   &tokenDetails.UserID,
+		Metadata: map[string]interface{}{"user_id": tokenDetails.UserID},
+	})
+
+	return nil
+}
+
+// ChangePassword updates the authenticated user's password. Requires valid old password.
+// User is loaded by email so we always use the same record as login/reset (avoids ID format mismatch).
+func (s *UserService) ChangePassword(ctx context.Context, email, oldPassword, newPassword string) error {
+	user, err := s.userRepo.GetUserByEmail(email)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return errors.New("user not found")
+	}
+	if !passwd.CheckPassword(oldPassword, user.PasswordHash) {
+		return errors.New("invalid current password")
+	}
+	hashedPassword, err := passwd.HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+	updatedAt := time.Now()
+	if err := s.userRepo.UpdatePassword(user.ID, hashedPassword, updatedAt); err != nil {
+		return err
+	}
+	_ = s.producer.SendAuditLog(kafka.AuditLogParams{
+		Service:  "user",
+		Action:   "password_changed",
+		Entity:   "user",
+		EntityID: user.ID,
+		UserID:   &user.ID,
+		Metadata: map[string]interface{}{"email": user.Email},
+	})
 	return nil
 }
 
@@ -188,5 +286,74 @@ func (s *UserService) RefreshToken(ctx context.Context, token string) (string, e
 		return "", errors.New("invalid token")
 	}
 	return "", nil
+}
+
+func (s *UserService) sendVerificationEmail(to, firstName, token string) {
+	log.Printf("user service: sendVerificationEmail called to=%s firstName=%s token_len=%d baseURL_set=%v",
+		to, firstName, len(token), s.emailVerificationBaseURL != "")
+	if s.producer == nil {
+		log.Printf("user service: sendVerificationEmail skipped (producer is nil)")
+		return
+	}
+	link := s.emailVerificationBaseURL
+	if link != "" && token != "" {
+		if len(link) > 0 && (link[len(link)-1] == '?' || link[len(link)-1] == '&') {
+			link += "token=" + token
+		} else {
+			if strings.Contains(link, "?") {
+				link += "&token=" + token
+			} else {
+				link += "?token=" + token
+			}
+		}
+	} else if link == "" {
+		link = "(set EMAIL_VERIFICATION_BASE_URL to enable link)"
+	}
+	subject := "Verify your email"
+	html := "<p>Hi " + firstName + ",</p><p>Please verify your email by clicking the link below:</p><p><a href=\"" + link + "\">Verify email</a></p><p>If you didn't create an account, you can ignore this email.</p>"
+	ev := kafka.NotificationEvent{
+		Type:    "email_verification",
+		Channel: "email",
+		Metadata: map[string]interface{}{
+			"to":      to,
+			"subject": subject,
+			"html":    html,
+			"to_name": firstName,
+		},
+	}
+	log.Printf("user service: publishing notification event type=%s channel=%s to topic=notification-events", ev.Type, ev.Channel)
+	if err := s.producer.SendNotification(ev); err != nil {
+		log.Printf("user service: SendNotification failed err=%v", err)
+		return
+	}
+	log.Printf("user service: notification event published successfully to=%s", to)
+}
+
+func (s *UserService) sendPasswordResetEmail(to, firstName, token string) {
+	if s.producer == nil {
+		return
+	}
+	link := s.passwordResetBaseURL
+	if link != "" && token != "" {
+		if strings.Contains(link, "?") {
+			link += "&token=" + token
+		} else {
+			link += "?token=" + token
+		}
+	} else if link == "" {
+		link = "(set PASSWORD_RESET_BASE_URL to enable link)"
+	}
+	subject := "Reset your password"
+	html := "<p>Hi " + firstName + ",</p><p>We received a request to reset your password. Click the link below to set a new password:</p><p><a href=\"" + link + "\">Reset password</a></p><p>This link expires in 1 hour. If you didn't request this, you can ignore this email.</p>"
+	_ = s.producer.SendNotification(kafka.NotificationEvent{
+		Type:    "password_reset",
+		Channel: "email",
+		Metadata: map[string]interface{}{
+			"to":      to,
+			"subject": subject,
+			"html":    html,
+			"to_name": firstName,
+		},
+	})
 }
 

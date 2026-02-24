@@ -10,6 +10,7 @@ import (
 	"github.com/abubakvr/payup-backend/services/user/internal/dto"
 	"github.com/abubakvr/payup-backend/services/user/internal/repository"
 	"github.com/abubakvr/payup-backend/services/user/internal/service"
+	"github.com/abubakvr/payup-backend/services/user/internal/validation"
 
 	"github.com/gin-gonic/gin"
 )
@@ -60,9 +61,7 @@ func isPublicPath(uri string) bool {
 // RegisterUser handles POST /register and creates a user via the service.
 func (c *UserController) RegisterUser(ctx *gin.Context) {
 	var req dto.RegisterRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		// ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
-		response.ErrorResponse(ctx, string(response.ValidationError), "Invalid request")
+	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
 		return
 	}
 
@@ -80,9 +79,7 @@ func (c *UserController) RegisterUser(ctx *gin.Context) {
 // Login handles POST /login and returns tokens via the service.
 func (c *UserController) Login(ctx *gin.Context) {
 	var req dto.LoginRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		// ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
-		response.ErrorResponse(ctx, string(response.ValidationError), "Invalid request")
+	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
 		return
 	}
 
@@ -99,4 +96,69 @@ func (c *UserController) Login(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, resp)
+}
+
+// ForgotPassword handles POST /forgot-password (request password reset email).
+func (c *UserController) ForgotPassword(ctx *gin.Context) {
+	var req dto.ForgotPasswordRequest
+	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
+		return
+	}
+	if err := c.svc.SendPasswordResetEmail(ctx.Request.Context(), req.Email); err != nil {
+		if err.Error() == "user not found" {
+			// Don't reveal whether email exists; return success anyway
+			response.SuccessResponse(ctx, string(response.Success), "If an account exists with this email, you will receive a reset link.", nil)
+			return
+		}
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
+		return
+	}
+	response.SuccessResponse(ctx, string(response.Success), "If an account exists with this email, you will receive a reset link.", nil)
+}
+
+// ResetPassword handles POST /reset-password (set new password with token).
+func (c *UserController) ResetPassword(ctx *gin.Context) {
+	var req dto.ResetPasswordRequest
+	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
+		return
+	}
+	if err := c.svc.ResetPassword(ctx.Request.Context(), req.Token, req.NewPassword); err != nil {
+		switch err.Error() {
+		case "invalid or expired token", "token already used", "token expired":
+			response.ErrorResponse(ctx, string(response.ValidationError), err.Error())
+			return
+		case "user not found":
+			response.ErrorResponse(ctx, string(response.ValidationError), "invalid or expired token")
+			return
+		}
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
+		return
+	}
+	response.SuccessResponse(ctx, string(response.Success), "Password has been reset.", nil)
+}
+
+// ChangePassword handles POST /change-password (authenticated). Requires JWT; user sends old_password and new_password.
+func (c *UserController) ChangePassword(ctx *gin.Context) {
+	claims, err := auth.DecodeJWTFromContext(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	var req dto.ChangePasswordRequest
+	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
+		return
+	}
+	if err := c.svc.ChangePassword(ctx.Request.Context(), claims.Email, req.OldPassword, req.NewPassword); err != nil {
+		if err.Error() == "invalid current password" {
+			response.ErrorResponse(ctx, string(response.AuthenticationFailed), "Current password is incorrect")
+			return
+		}
+		if err.Error() == "user not found" {
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
+		return
+	}
+	response.SuccessResponse(ctx, string(response.Success), "Password has been changed.", nil)
 }

@@ -139,12 +139,21 @@ func (r *UserRepository) GetEmailVerificationToken(tokenHash string) (*model.Ema
 	return &token, err
 }
 
-func (r *UserRepository) GetPasswordResetToken(tokenHash string) (*model.PasswordResetToken, error) {
+func (r *UserRepository) GetPasswordResetToken(tokenHashHex string) (*model.PasswordResetToken, error) {
 	query := `SELECT id, user_id, token_hash, expires_at, used, created_at FROM password_reset_tokens WHERE token_hash = $1`
-	row := r.db.QueryRow(query, tokenHash)
+	row := r.db.QueryRow(query, tokenHashHex)
 	var token model.PasswordResetToken
-	err := row.Scan(&token.ID, &token.UserID, &token.TokenHash, &token.ExpiresAt, &token.Used, &token.CreatedAt)
-	return &token, err
+	var tokenHashStr string
+	err := row.Scan(&token.ID, &token.UserID, &tokenHashStr, &token.ExpiresAt, &token.Used, &token.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	decoded, err := hex.DecodeString(tokenHashStr)
+	if err != nil || len(decoded) != 32 {
+		return nil, errors.New("invalid token hash")
+	}
+	copy(token.TokenHash[:], decoded)
+	return &token, nil
 }
 
 func (r *UserRepository) GetRefreshToken(tokenHash string) (*model.RefreshToken, error) {
@@ -161,8 +170,28 @@ func (r *UserRepository) UpdateUser(user model.User) error {
 	return err
 }
 
+// UpdatePassword updates only password_hash and updated_at for the given user ID. Returns error if no row was updated.
+func (r *UserRepository) UpdatePassword(userID, passwordHash string, updatedAt time.Time) error {
+	query := `UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3`
+	result, err := r.db.Exec(query, passwordHash, updatedAt, userID)
+	if err != nil {
+		return err
+	}
+	n, _ := result.RowsAffected()
+	if n != 1 {
+		return errors.New("user not found or update failed")
+	}
+	return nil
+}
+
 func (r *UserRepository) DeleteEmailVerificationToken(tokenHash string) error {
 	query := `DELETE FROM email_verification_tokens WHERE token_hash = $1`
 	_, err := r.db.Exec(query, tokenHash)
+	return err
+}
+
+func (r *UserRepository) MarkPasswordResetTokenUsed(tokenID string) error {
+	query := `UPDATE password_reset_tokens SET used = true WHERE id = $1`
+	_, err := r.db.Exec(query, tokenID)
 	return err
 }

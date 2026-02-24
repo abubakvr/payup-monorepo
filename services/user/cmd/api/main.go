@@ -23,8 +23,8 @@ func main() {
 
 	tokenGen := service.NewTokenGenerator()
 	userRepo := repository.NewUserRepository(db, tokenGen)
-	producer := kafka.NewProducer([]string{"redpanda:9092"})
-	userSvc := service.NewUserService(userRepo, tokenGen, producer)
+	producer := kafka.NewProducer([]string{cfg.KafkaBroker})
+	userSvc := service.NewUserService(userRepo, tokenGen, producer, cfg.EmailVerificationBaseURL, cfg.PasswordResetBaseURL)
 	userCtrl := controller.NewUserController(userSvc)
 	r := router.SetupRouter(cfg, userCtrl)
 

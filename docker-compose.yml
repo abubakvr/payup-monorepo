@@ -82,6 +82,10 @@ services:
 
   user-service:
     build: ./services/user
+    environment:
+      KAFKA_BROKER: redpanda:9092
+      EMAIL_VERIFICATION_BASE_URL: ${EMAIL_VERIFICATION_BASE_URL:-}
+      PASSWORD_RESET_BASE_URL: ${PASSWORD_RESET_BASE_URL:-}
     env_file:
       - .env
     networks:
@@ -133,7 +137,9 @@ services:
     image: docker.redpanda.com/redpandadata/redpanda:v24.2.4
     entrypoint: ["/bin/sh", "-c"]
     command:
-      - "rpk topic create user-events --brokers redpanda:9092 2>/dev/null || true"
+      - "rpk topic create user-events --brokers redpanda:9092 2>/dev/null || true
+        rpk topic create audit-events --brokers redpanda:9092 2>/dev/null || true
+        rpk topic create notification-events --brokers redpanda:9092 2>/dev/null || true"
     networks:
       - payup-internal
     depends_on:
@@ -165,6 +171,31 @@ services:
       retries: 10
       start_period: 15s
 
+  notification-service:
+    build: ./services/notification
+    environment:
+      KAFKA_BROKER: redpanda:9092
+      NOTIFICATION_SERVICE_PORT: "8004"
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:-noreply@example.com}
+      BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-PayUp}
+      TERMII_API_KEY: ${TERMII_API_KEY:-}
+      TERMII_SENDER_ID: ${TERMII_SENDER_ID:-PayUp}
+      TERMII_BASE_URL: ${TERMII_BASE_URL:-https://api.termii.com}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+    networks:
+      - payup-internal
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    develop:
+      watch:
+        - action: rebuild
+          path: ./services/notification
+
   api-gateway:
     image: nginx:alpine
     container_name: payup-api-gateway
@@ -178,6 +209,7 @@ services:
       - user-service
       - kyc-service
       - audit-service
+      - notification-service
 
 volumes:
   redpanda_data:
