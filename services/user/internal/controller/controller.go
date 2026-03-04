@@ -20,6 +20,7 @@ var publicAuthPaths = []string{
 	"/register", "/login",
 	"/password-reset", "/forgot-password", "/reset-password",
 	"/verify-email", "/resend-verification", "/auth/validate",
+	"/2fa/verify-login",
 }
 
 // UserController holds the user service and exposes HTTP handlers.
@@ -75,17 +76,17 @@ func (c *UserController) RegisterUser(ctx *gin.Context) {
 	response.SuccessResponse(ctx, string(response.Success), "Account created. Please check your email to verify your account before logging in.", nil)
 }
 
-// Login handles POST /login and returns tokens via the service.
+// Login handles POST /login and returns tokens, or requires 2FA with a short-lived token.
 func (c *UserController) Login(ctx *gin.Context) {
 	var req dto.LoginRequest
 	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
 		return
 	}
 
-	resp, err := c.svc.Login(ctx.Request.Context(), req.Email, req.Password)
+	result, err := c.svc.Login(ctx.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, repository.ErrInvalidCredentials) {
-			response.ErrorResponse(ctx, string(response.AuthenticationFailed), "invalid email or password")
+			response.AuthErrorResponse(ctx, string(response.AuthenticationFailed), "invalid email or password")
 			return
 		}
 		if errors.Is(err, service.ErrEmailNotVerified) {
@@ -100,8 +101,15 @@ func (c *UserController) Login(ctx *gin.Context) {
 		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
 		return
 	}
-
-	ctx.JSON(http.StatusOK, resp)
+	if result == nil {
+		response.ErrorResponse(ctx, string(response.InternalServerError), "login failed")
+		return
+	}
+	if result.Requires2FA != nil {
+		ctx.JSON(http.StatusOK, result.Requires2FA)
+		return
+	}
+	ctx.JSON(http.StatusOK, result.Success)
 }
 
 // VerifyEmail handles POST /verify-email with token from the verification link.
@@ -208,4 +216,143 @@ func (c *UserController) ChangePassword(ctx *gin.Context) {
 		return
 	}
 	response.SuccessResponse(ctx, string(response.Success), "Password has been changed.", nil)
+}
+
+// GetSettings returns the authenticated user's settings (GET /settings). Requires JWT.
+func (c *UserController) GetSettings(ctx *gin.Context) {
+	claims, err := auth.DecodeJWTFromContext(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	settings, err := c.svc.GetSettings(ctx.Request.Context(), claims.UserID)
+	if err != nil {
+		if err.Error() == "user settings not found" {
+			ctx.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
+		return
+	}
+	response.SuccessResponse(ctx, string(response.Success), "Settings retrieved.", settings)
+}
+
+// UpdateSettings applies a partial update to the authenticated user's settings (PATCH /settings). Requires JWT.
+func (c *UserController) UpdateSettings(ctx *gin.Context) {
+	claims, err := auth.DecodeJWTFromContext(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	var req dto.UpdateSettingsRequest
+	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
+		return
+	}
+	settings, err := c.svc.UpdateSettings(ctx.Request.Context(), claims.UserID, &req)
+	if err != nil {
+		if err.Error() == "user settings not found" {
+			ctx.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
+		return
+	}
+	response.SuccessResponse(ctx, string(response.Success), "Settings updated.", settings)
+}
+
+// Setup2FA handles POST /2fa/setup (authenticated). Returns TOTP secret and QR URL for authenticator app.
+func (c *UserController) Setup2FA(ctx *gin.Context) {
+	claims, err := auth.DecodeJWTFromContext(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	secret, qrCodeURL, err := c.svc.Setup2FA(ctx.Request.Context(), claims.UserID)
+	if err != nil {
+		if errors.Is(err, service.Err2FAAlreadyEnabled) {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"status": "error", "message": err.Error(), "responseCode": string(response.ValidationError),
+			})
+			return
+		}
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
+		return
+	}
+	response.SuccessResponse(ctx, string(response.Success), "Scan the QR code or enter the secret in your app.", dto.Setup2FAResponse{
+		Secret:    secret,
+		QRCodeURL: qrCodeURL,
+		Message:   "Enter the 6-digit code from your app in POST /2fa/verify-setup to enable 2FA.",
+	})
+}
+
+// VerifySetup2FA handles POST /2fa/verify-setup (authenticated). Verifies TOTP code and enables 2FA.
+func (c *UserController) VerifySetup2FA(ctx *gin.Context) {
+	claims, err := auth.DecodeJWTFromContext(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	var req dto.VerifySetup2FARequest
+	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
+		return
+	}
+	if err := c.svc.VerifySetup2FA(ctx.Request.Context(), claims.UserID, req.Code); err != nil {
+		if errors.Is(err, service.ErrInvalidTOTPCode) {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"status": "error", "message": "Invalid or expired code", "responseCode": string(response.ValidationError),
+			})
+			return
+		}
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
+		return
+	}
+	response.SuccessResponse(ctx, string(response.Success), "Two-factor authentication is now enabled.", nil)
+}
+
+// VerifyLogin2FA handles POST /2fa/verify-login (no JWT; uses twoFactorToken from login response). Returns access and refresh tokens.
+func (c *UserController) VerifyLogin2FA(ctx *gin.Context) {
+	var req dto.VerifyLogin2FARequest
+	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
+		return
+	}
+	resp, err := c.svc.VerifyLogin2FA(ctx.Request.Context(), req.TwoFactorToken, req.Code)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidTOTPCode) {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"status": "error", "message": "Invalid or expired code", "responseCode": string(response.ValidationError),
+			})
+			return
+		}
+		ctx.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, resp)
+}
+
+// Disable2FA handles POST /2fa/disable (authenticated). Requires password to turn off 2FA.
+func (c *UserController) Disable2FA(ctx *gin.Context) {
+	claims, err := auth.DecodeJWTFromContext(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	var req dto.Disable2FARequest
+	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
+		return
+	}
+	if err := c.svc.Disable2FA(ctx.Request.Context(), claims.UserID, req.Password); err != nil {
+		if errors.Is(err, service.Err2FANotEnabled) {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"status": "error", "message": err.Error(), "responseCode": string(response.ValidationError),
+			})
+			return
+		}
+		if err.Error() == "invalid password" {
+			response.ErrorResponse(ctx, string(response.AuthenticationFailed), "Invalid password")
+			return
+		}
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
+		return
+	}
+	response.SuccessResponse(ctx, string(response.Success), "Two-factor authentication has been disabled.", nil)
 }

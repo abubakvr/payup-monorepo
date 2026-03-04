@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package user;
+
+option go_package = "github.com/abubakvr/payup-backend/proto/user;userpb";
+
+// UserServiceForKYC is used by KYC service to validate and fetch user details when starting KYC.
+service UserServiceForKYC {
+  rpc GetUserForKYC (GetUserForKYCRequest) returns (GetUserForKYCResponse);
+}
+
+message GetUserForKYCRequest {
+  string user_id = 1;
+}
+
+message GetUserForKYCResponse {
+  bool found = 1;
+  string user_id = 2;
+  string email = 3;
+  string first_name = 4;
+  string last_name = 5;
+}

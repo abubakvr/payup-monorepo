@@ -55,7 +55,8 @@ Produce JSON messages to the `notification-events` topic with:
 | `TERMII_SENDER_ID` | Alphanumeric sender ID (3–11 chars) |
 | `TERMII_BASE_URL` | Termii API base (default `https://api.termii.com`) |
 | `WHATSAPP_ACCESS_TOKEN` | WhatsApp Business Cloud API token |
-| `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp Business phone number ID |
-| `WHATSAPP_API_VERSION` | Graph API version (default `v21.0`) |
+| `WHATSAPP_PHONE_NUMBER_ID` | Meta **Phone number ID** from WhatsApp > API setup (not the actual phone number; 404 = wrong ID) |
+| `WHATSAPP_API_VERSION` | Graph API version (default `v25.0`) |
+| `WHATSAPP_OTP_TEMPLATE_NAME` | Template name for OTP messages (default `basic_otp`) |
 
 Omitting a provider’s keys disables that channel (no crash).

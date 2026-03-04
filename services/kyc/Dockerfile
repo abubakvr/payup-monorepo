@@ -1,9 +1,11 @@
-# Build stage (context: ./services/kyc — proto is in-repo at proto/kyc/)
+# Build stage (context: repo root so replace ../../proto resolves)
 FROM golang:1.25-alpine AS builder
 WORKDIR /app
-COPY go.mod ./
+# replace => ../../proto expects /proto when WORKDIR is /app
+COPY proto /proto
+COPY services/kyc/go.mod services/kyc/go.sum ./
 RUN go mod download
-COPY . .
+COPY services/kyc/ ./
 RUN go build -o kyc-http cmd/api/main.go
 RUN go build -o kyc-grpc ./internal/grpc
 

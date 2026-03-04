@@ -12,17 +12,19 @@ import (
 
 // NotificationService processes notification events and sends via the appropriate provider.
 type NotificationService struct {
-	brevo    *brevo.Client
-	termii   *termii.Client
-	whatsapp *whatsapp.Client
+	brevo                 *brevo.Client
+	termii                *termii.Client
+	whatsapp              *whatsapp.Client
+	whatsappOTPTemplateName string
 }
 
 // NewNotificationService builds the service with the given provider clients.
-func NewNotificationService(brevo *brevo.Client, termii *termii.Client, whatsapp *whatsapp.Client) *NotificationService {
+func NewNotificationService(brevo *brevo.Client, termii *termii.Client, whatsapp *whatsapp.Client, whatsappOTPTemplateName string) *NotificationService {
 	return &NotificationService{
-		brevo:    brevo,
-		termii:   termii,
-		whatsapp: whatsapp,
+		brevo:                  brevo,
+		termii:                 termii,
+		whatsapp:               whatsapp,
+		whatsappOTPTemplateName: whatsappOTPTemplateName,
 	}
 }
 
@@ -116,6 +118,22 @@ func (s *NotificationService) sendWhatsApp(evType string, meta map[string]interf
 		to = to[1:]
 	}
 
+	// OTP: use static template (body + URL button) when metadata.otp is set
+	otp := getStr(meta, "otp")
+	if otp != "" {
+		templateName := getStr(meta, "template_name")
+		if templateName == "" {
+			templateName = s.whatsappOTPTemplateName
+		}
+		err := s.whatsapp.SendOTP(to, templateName, otp)
+		if err != nil {
+			log.Printf("notification: whatsapp otp send failed type=%s to=%s err=%v", evType, to, err)
+			return err
+		}
+		log.Printf("notification: whatsapp otp sent type=%s to=%s", evType, to)
+		return nil
+	}
+
 	templateName := getStr(meta, "template_name")
 	if templateName != "" {
 		lang := getStr(meta, "template_language")
@@ -123,8 +141,8 @@ func (s *NotificationService) sendWhatsApp(evType string, meta map[string]interf
 		if params, ok := meta["template_params"].([]interface{}); ok {
 			var bodyParams []whatsapp.TemplateParam
 			for _, p := range params {
-				if s, ok := p.(string); ok {
-					bodyParams = append(bodyParams, whatsapp.TemplateParam{Type: "text", Text: s})
+				if str, ok := p.(string); ok {
+					bodyParams = append(bodyParams, whatsapp.TemplateParam{Type: "text", Text: str})
 				}
 			}
 			if len(bodyParams) > 0 {
@@ -147,7 +165,7 @@ func (s *NotificationService) sendWhatsApp(evType string, meta map[string]interf
 		text = getStr(meta, "message")
 	}
 	if text == "" {
-		return fmt.Errorf("whatsapp: need metadata.template_name or metadata.body")
+		return fmt.Errorf("whatsapp: need metadata.otp, metadata.template_name, or metadata.body")
 	}
 	err := s.whatsapp.SendText(to, text)
 	if err != nil {

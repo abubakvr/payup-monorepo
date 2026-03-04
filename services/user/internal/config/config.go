@@ -9,11 +9,12 @@ import (
 )
 
 type Config struct {
-	Port                      string
-	DatabaseURL               string
-	KafkaBroker               string
-	EmailVerificationBaseURL   string
-	PasswordResetBaseURL      string
+	Port                    string
+	GrpcPort                string // gRPC port for KYC service (e.g. GetUserForKYC)
+	DatabaseURL             string
+	KafkaBroker             string
+	EmailVerificationBaseURL string
+	PasswordResetBaseURL    string
 }
 
 func LoadConfig() *Config {
@@ -37,8 +38,13 @@ func LoadConfig() *Config {
 	if kafkaBroker == "" {
 		kafkaBroker = "redpanda:9092"
 	}
+	grpcPort := os.Getenv("USER_GRPC_PORT")
+	if grpcPort == "" {
+		grpcPort = "9001"
+	}
 	return &Config{
 		Port:                    port,
+		GrpcPort:                grpcPort,
 		DatabaseURL:             dbURL,
 		KafkaBroker:             kafkaBroker,
 		EmailVerificationBaseURL: os.Getenv("EMAIL_VERIFICATION_BASE_URL"),

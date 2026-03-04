@@ -40,6 +40,177 @@ func (r *UserRepository) CreateUser(user model.User) error {
 	return err
 }
 
+// CreateUserSettings inserts a default row for the user. All optional fields are NULL/false. Call after CreateUser.
+func (r *UserRepository) CreateUserSettings(userID string, now time.Time) error {
+	query := `
+		INSERT INTO user_settings (user_id, created_at, updated_at)
+		VALUES ($1, $2, $3)
+	`
+	_, err := r.db.Exec(query, userID, now, now)
+	return err
+}
+
+// GetOrCreateUserSettings returns the user's settings row, creating a default one if missing (e.g. for legacy users).
+func (r *UserRepository) GetOrCreateUserSettings(userID string) (*model.UserSettings, error) {
+	s, err := r.GetUserSettings(userID)
+	if err != nil {
+		return nil, err
+	}
+	if s != nil {
+		return s, nil
+	}
+	_ = r.CreateUserSettings(userID, time.Now()) // ignore duplicate if created by another request
+	return r.GetUserSettings(userID)
+}
+
+// GetUserSettings returns the settings row for the user, or nil if not found.
+func (r *UserRepository) GetUserSettings(userID string) (*model.UserSettings, error) {
+	query := `
+		SELECT user_id, pin_hash, biometric_enabled, two_factor_enabled,
+		       totp_secret, totp_secret_pending, totp_pending_created_at,
+		       daily_transfer_limit, monthly_transfer_limit, transaction_alerts_enabled,
+		       language, theme, created_at, updated_at
+		FROM user_settings WHERE user_id = $1
+	`
+	row := r.db.QueryRow(query, userID)
+	var s model.UserSettings
+	var pinHash, language, theme, totpSecret, totpPending sql.NullString
+	var totpPendingAt sql.NullTime
+	var dailyLimit, monthlyLimit sql.NullFloat64
+	err := row.Scan(&s.UserID, &pinHash, &s.BiometricEnabled, &s.TwoFactorEnabled,
+		&totpSecret, &totpPending, &totpPendingAt,
+		&dailyLimit, &monthlyLimit, &s.TransactionAlertsEnabled,
+		&language, &theme, &s.CreatedAt, &s.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if pinHash.Valid {
+		s.PinHash = &pinHash.String
+	}
+	if language.Valid {
+		s.Language = &language.String
+	}
+	if theme.Valid {
+		s.Theme = &theme.String
+	}
+	if dailyLimit.Valid {
+		s.DailyTransferLimit = &dailyLimit.Float64
+	}
+	if monthlyLimit.Valid {
+		s.MonthlyTransferLimit = &monthlyLimit.Float64
+	}
+	if totpSecret.Valid {
+		s.TotpSecret = &totpSecret.String
+	}
+	if totpPending.Valid {
+		s.TotpSecretPending = &totpPending.String
+	}
+	if totpPendingAt.Valid {
+		s.TotpPendingCreatedAt = &totpPendingAt.Time
+	}
+	return &s, nil
+}
+
+// UpdateUserSettings updates the settings row for the user. All updatable columns are set.
+func (r *UserRepository) UpdateUserSettings(s *model.UserSettings) error {
+	query := `
+		UPDATE user_settings SET
+			pin_hash = $2, biometric_enabled = $3, two_factor_enabled = $4,
+			daily_transfer_limit = $5, monthly_transfer_limit = $6,
+			transaction_alerts_enabled = $7, language = $8, theme = $9, updated_at = $10
+		WHERE user_id = $1
+	`
+	pinHash := sql.NullString{}
+	if s.PinHash != nil {
+		pinHash = sql.NullString{String: *s.PinHash, Valid: true}
+	}
+	language := sql.NullString{}
+	if s.Language != nil {
+		language = sql.NullString{String: *s.Language, Valid: true}
+	}
+	theme := sql.NullString{}
+	if s.Theme != nil {
+		theme = sql.NullString{String: *s.Theme, Valid: true}
+	}
+	dailyLimit := sql.NullFloat64{}
+	if s.DailyTransferLimit != nil {
+		dailyLimit = sql.NullFloat64{Float64: *s.DailyTransferLimit, Valid: true}
+	}
+	monthlyLimit := sql.NullFloat64{}
+	if s.MonthlyTransferLimit != nil {
+		monthlyLimit = sql.NullFloat64{Float64: *s.MonthlyTransferLimit, Valid: true}
+	}
+	result, err := r.db.Exec(query, s.UserID, pinHash, s.BiometricEnabled, s.TwoFactorEnabled,
+		dailyLimit, monthlyLimit, s.TransactionAlertsEnabled,
+		language, theme, s.UpdatedAt)
+	if err != nil {
+		return err
+	}
+	n, _ := result.RowsAffected()
+	if n != 1 {
+		return errors.New("user settings not found or update failed")
+	}
+	return nil
+}
+
+// SetTotpPending stores a TOTP secret in pending state for 2FA setup. Overwrites any existing pending.
+func (r *UserRepository) SetTotpPending(userID, secret string) error {
+	query := `UPDATE user_settings SET totp_secret_pending = $2, totp_pending_created_at = $3, updated_at = $3 WHERE user_id = $1`
+	now := time.Now()
+	result, err := r.db.Exec(query, userID, secret, now)
+	if err != nil {
+		return err
+	}
+	n, _ := result.RowsAffected()
+	if n != 1 {
+		return errors.New("user settings not found")
+	}
+	return nil
+}
+
+// EnableTotpFromPending moves totp_secret_pending to totp_secret, clears pending, sets two_factor_enabled = true.
+func (r *UserRepository) EnableTotpFromPending(userID string) error {
+	query := `
+		UPDATE user_settings
+		SET totp_secret = totp_secret_pending, totp_secret_pending = NULL, totp_pending_created_at = NULL,
+		    two_factor_enabled = true, updated_at = $2
+		WHERE user_id = $1 AND totp_secret_pending IS NOT NULL
+	`
+	now := time.Now()
+	result, err := r.db.Exec(query, userID, now)
+	if err != nil {
+		return err
+	}
+	n, _ := result.RowsAffected()
+	if n != 1 {
+		return errors.New("user settings not found or no pending TOTP secret")
+	}
+	return nil
+}
+
+// DisableTotp clears TOTP secret and disables 2FA for the user.
+func (r *UserRepository) DisableTotp(userID string) error {
+	query := `
+		UPDATE user_settings
+		SET totp_secret = NULL, totp_secret_pending = NULL, totp_pending_created_at = NULL,
+		    two_factor_enabled = false, updated_at = $2
+		WHERE user_id = $1
+	`
+	now := time.Now()
+	result, err := r.db.Exec(query, userID, now)
+	if err != nil {
+		return err
+	}
+	n, _ := result.RowsAffected()
+	if n != 1 {
+		return errors.New("user settings not found")
+	}
+	return nil
+}
+
 func (r *UserRepository) Login(loginRequest model.LoginRequest) (*model.User, error) {
 	query := `SELECT id, email, first_name, last_name, phone_number, phone_number_hash, password_hash, email_verified, created_at, updated_at FROM users WHERE email = $1`
 	row := r.db.QueryRow(query, loginRequest.Email)

@@ -23,3 +23,13 @@ func ErrorResponse(ctx *gin.Context, code string, message string) {
 		Data:         nil,
 	})
 }
+
+// AuthErrorResponse sends 401 Unauthorized with the standard API envelope (e.g. invalid credentials, email not verified).
+func AuthErrorResponse(ctx *gin.Context, code string, message string) {
+	ctx.JSON(http.StatusUnauthorized, ApiResponse{
+		Status:       "error",
+		Message:      message,
+		ResponseCode: code,
+		Data:         nil,
+	})
+}

@@ -81,7 +81,9 @@ services:
         condition: service_healthy
 
   user-service:
-    build: ./services/user
+    build:
+      context: .
+      dockerfile: services/user/Dockerfile
     environment:
       KAFKA_BROKER: redpanda:9092
       EMAIL_VERIFICATION_BASE_URL: ${EMAIL_VERIFICATION_BASE_URL:-}
@@ -117,7 +119,13 @@ services:
 
   # Existing services
   kyc-service:
-    build: ./services/kyc
+    build:
+      context: .
+      dockerfile: services/kyc/Dockerfile
+    env_file:
+      - .env
+    environment:
+      KAFKA_BROKER: ${KAFKA_BROKER:-redpanda:9092}
     networks:
       - payup-internal
     depends_on:

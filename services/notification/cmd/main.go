@@ -42,7 +42,7 @@ func main() {
 		log.Printf("notification: WhatsApp not configured")
 	}
 
-	svc := service.NewNotificationService(brevoClient, termiiClient, whatsappClient)
+	svc := service.NewNotificationService(brevoClient, termiiClient, whatsappClient, cfg.WhatsAppOTPTemplateName)
 	log.Printf("notification: Kafka broker=%s topic=notification-events", cfg.KafkaBroker)
 	ctrl := controller.NewController()
 	r := router.SetupRouter(ctrl)

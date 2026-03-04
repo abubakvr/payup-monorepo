@@ -19,9 +19,10 @@ type Config struct {
 	TermiiBaseURL  string
 
 	// WhatsApp Business Cloud API
-	WhatsAppToken      string
-	WhatsAppPhoneID    string
-	WhatsAppAPIVersion string
+	WhatsAppToken           string
+	WhatsAppPhoneID         string
+	WhatsAppAPIVersion      string
+	WhatsAppOTPTemplateName string // template name for OTP (body + URL button); default basic_otp
 }
 
 func LoadConfig() *Config {
@@ -47,20 +48,25 @@ func LoadConfig() *Config {
 	}
 	waVersion := os.Getenv("WHATSAPP_API_VERSION")
 	if waVersion == "" {
-		waVersion = "v21.0"
+		waVersion = "v25.0"
+	}
+	waOTPTemplate := os.Getenv("WHATSAPP_OTP_TEMPLATE_NAME")
+	if waOTPTemplate == "" {
+		waOTPTemplate = "basic_otp"
 	}
 
 	return &Config{
-		Port:               port,
-		KafkaBroker:        kafkaBroker,
-		BrevoAPIKey:        os.Getenv("BREVO_API_KEY"),
-		BrevoSenderEmail:   brevoSender,
-		BrevoSenderName:    brevoName,
-		TermiiAPIKey:       os.Getenv("TERMII_API_KEY"),
-		TermiiSenderID:     os.Getenv("TERMII_SENDER_ID"),
-		TermiiBaseURL:      termiiBase,
-		WhatsAppToken:      os.Getenv("WHATSAPP_ACCESS_TOKEN"),
-		WhatsAppPhoneID:     os.Getenv("WHATSAPP_PHONE_NUMBER_ID"),
-		WhatsAppAPIVersion: waVersion,
+		Port:                    port,
+		KafkaBroker:             kafkaBroker,
+		BrevoAPIKey:             os.Getenv("BREVO_API_KEY"),
+		BrevoSenderEmail:        brevoSender,
+		BrevoSenderName:         brevoName,
+		TermiiAPIKey:            os.Getenv("TERMII_API_KEY"),
+		TermiiSenderID:          os.Getenv("TERMII_SENDER_ID"),
+		TermiiBaseURL:           termiiBase,
+		WhatsAppToken:           os.Getenv("WHATSAPP_ACCESS_TOKEN"),
+		WhatsAppPhoneID:         os.Getenv("WHATSAPP_PHONE_NUMBER_ID"),
+		WhatsAppAPIVersion:      waVersion,
+		WhatsAppOTPTemplateName: waOTPTemplate,
 	}
 }

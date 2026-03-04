@@ -9,11 +9,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/abubakvr/payup-backend/services/user/internal/dto"
 	"github.com/abubakvr/payup-backend/services/user/internal/kafka"
 	"github.com/abubakvr/payup-backend/services/user/internal/model"
 	passwd "github.com/abubakvr/payup-backend/services/user/internal/password"
 	"github.com/abubakvr/payup-backend/services/user/internal/repository"
 	"github.com/google/uuid"
+	"github.com/pquerna/otp/totp"
 )
 
 type UserService struct {
@@ -77,6 +79,10 @@ func (s *UserService) CreateUser(ctx context.Context, email, password, firstName
 		return "", err
 	}
 
+	if err := s.userRepo.CreateUserSettings(userID, user.CreatedAt); err != nil {
+		return "", err
+	}
+
 	token := uuid.New().String()
 	hashedToken := sha256.Sum256([]byte(token))
 	tokenDetails := model.EmailVerificationToken{
@@ -109,7 +115,21 @@ func (s *UserService) CreateUser(ctx context.Context, email, password, firstName
 // ErrEmailNotVerified is returned when login is attempted before email verification.
 var ErrEmailNotVerified = errors.New("email not verified")
 
-func (s *UserService) Login(ctx context.Context, email, password string) (*model.LoginResponse, error) {
+// Err2FARequired is not returned; when 2FA is enabled, Login returns (nil, nil, nil) and the caller checks LoginResult.Requires2FA.
+var Err2FAAlreadyEnabled = errors.New("two-factor authentication is already enabled")
+var Err2FANotEnabled = errors.New("two-factor authentication is not enabled")
+var ErrInvalidTOTPCode = errors.New("invalid or expired TOTP code")
+
+const totpPendingExpiry = 10 * time.Minute
+const totpIssuer = "PayUp"
+
+// LoginResult holds either a successful login response or a 2FA-required response. Exactly one of Success or Requires2FA is set.
+type LoginResult struct {
+	Success     *model.LoginResponse
+	Requires2FA *model.LoginRequires2FAResponse
+}
+
+func (s *UserService) Login(ctx context.Context, email, password string) (*LoginResult, error) {
 	loginRequest := model.LoginRequest{
 		Email:    email,
 		Password: password,
@@ -119,14 +139,35 @@ func (s *UserService) Login(ctx context.Context, email, password string) (*model
 		return nil, err
 	}
 	if user == nil {
-		return nil, errors.New("invalid email or password")
+		return nil, repository.ErrInvalidCredentials
 	}
 	if !user.EmailVerified {
 		return nil, ErrEmailNotVerified
 	}
 	if !passwd.CheckPassword(loginRequest.Password, user.PasswordHash) {
-		return nil, errors.New("invalid email or password")
+		return nil, repository.ErrInvalidCredentials
 	}
+
+	settings, err := s.userRepo.GetUserSettings(user.ID)
+	if err != nil {
+		return nil, err
+	}
+	// If no settings row exists (e.g. legacy user), treat as 2FA disabled and issue tokens.
+	if settings != nil && settings.TwoFactorEnabled {
+		token, expiresAt, err := Generate2FAPendingToken(user.ID, user.Email)
+		if err != nil {
+			return nil, err
+		}
+		return &LoginResult{
+			Requires2FA: &model.LoginRequires2FAResponse{
+				RequiresTwoFactor:       true,
+				TwoFactorToken:          token,
+				TwoFactorTokenExpiresAt: expiresAt,
+				Message:                 "Enter the code from your authenticator app",
+			},
+		}, nil
+	}
+
 	accessToken, expiresAt, err := s.tokenGen.GenerateAccessToken(user.ID, user.Email)
 	if err != nil {
 		return nil, err
@@ -145,12 +186,123 @@ func (s *UserService) Login(ctx context.Context, email, password string) (*model
 		Metadata: map[string]interface{}{"email": user.Email},
 	})
 
+	return &LoginResult{
+		Success: &model.LoginResponse{
+			AccessToken:      accessToken,
+			RefreshToken:     refreshToken,
+			ExpiresAt:        expiresAt,
+			RefreshExpiresAt: refreshExpiresAt,
+		},
+	}, nil
+}
+
+// Setup2FA starts 2FA enrollment: generates a TOTP secret, stores it as pending, returns secret and QR URL for the authenticator app.
+func (s *UserService) Setup2FA(ctx context.Context, userID string) (secret, qrCodeURL string, err error) {
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil || user == nil {
+		return "", "", errors.New("user not found")
+	}
+	settings, err := s.userRepo.GetOrCreateUserSettings(userID)
+	if err != nil || settings == nil {
+		return "", "", errors.New("user settings not found")
+	}
+	if settings.TwoFactorEnabled {
+		return "", "", Err2FAAlreadyEnabled
+	}
+	key, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      totpIssuer,
+		AccountName: user.Email,
+		Period:      30,
+		Digits:      6,
+	})
+	if err != nil {
+		return "", "", err
+	}
+	if err := s.userRepo.SetTotpPending(userID, key.Secret()); err != nil {
+		return "", "", err
+	}
+	return key.Secret(), key.URL(), nil
+}
+
+// VerifySetup2FA verifies the TOTP code and enables 2FA (moves pending secret to active).
+func (s *UserService) VerifySetup2FA(ctx context.Context, userID, code string) error {
+	settings, err := s.userRepo.GetOrCreateUserSettings(userID)
+	if err != nil || settings == nil {
+		return errors.New("user settings not found")
+	}
+	if settings.TotpSecretPending == nil {
+		return errors.New("no 2FA setup in progress; start with POST /2fa/setup")
+	}
+	if settings.TotpPendingCreatedAt != nil && time.Since(*settings.TotpPendingCreatedAt) > totpPendingExpiry {
+		_ = s.userRepo.DisableTotp(userID) // clear pending
+		return errors.New("2FA setup expired; please start again")
+	}
+	if !totp.Validate(code, *settings.TotpSecretPending) {
+		return ErrInvalidTOTPCode
+	}
+	return s.userRepo.EnableTotpFromPending(userID)
+}
+
+// VerifyLogin2FA exchanges a 2FA pending token + TOTP code for access and refresh tokens.
+func (s *UserService) VerifyLogin2FA(ctx context.Context, twoFactorToken, code string) (*model.LoginResponse, error) {
+	claims, err := ValidateJWT(twoFactorToken)
+	if err != nil {
+		return nil, errors.New("invalid or expired two-factor token")
+	}
+	if claims.Purpose != Purpose2FALogin {
+		return nil, errors.New("invalid token purpose")
+	}
+	settings, err := s.userRepo.GetUserSettings(claims.UserID)
+	if err != nil || settings == nil {
+		return nil, errors.New("user settings not found")
+	}
+	if !settings.TwoFactorEnabled || settings.TotpSecret == nil {
+		return nil, errors.New("2FA not enabled for this account")
+	}
+	if !totp.Validate(code, *settings.TotpSecret) {
+		return nil, ErrInvalidTOTPCode
+	}
+	accessToken, expiresAt, err := s.tokenGen.GenerateAccessToken(claims.UserID, claims.Email)
+	if err != nil {
+		return nil, err
+	}
+	refreshToken, refreshExpiresAt, err := s.tokenGen.GenerateAndStoreRefreshToken(claims.UserID, s.userRepo)
+	if err != nil {
+		return nil, err
+	}
+	_ = s.producer.SendAuditLog(kafka.AuditLogParams{
+		Service:  "user",
+		Action:   "login",
+		Entity:   "user",
+		EntityID: claims.UserID,
+		UserID:   &claims.UserID,
+		Metadata: map[string]interface{}{"email": claims.Email, "2fa": true},
+	})
 	return &model.LoginResponse{
 		AccessToken:      accessToken,
 		RefreshToken:     refreshToken,
 		ExpiresAt:        expiresAt,
 		RefreshExpiresAt: refreshExpiresAt,
 	}, nil
+}
+
+// Disable2FA turns off 2FA after verifying the user's password.
+func (s *UserService) Disable2FA(ctx context.Context, userID string, password string) error {
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil || user == nil {
+		return errors.New("user not found")
+	}
+	if !passwd.CheckPassword(password, user.PasswordHash) {
+		return errors.New("invalid password")
+	}
+	settings, err := s.userRepo.GetOrCreateUserSettings(userID)
+	if err != nil || settings == nil {
+		return errors.New("user settings not found")
+	}
+	if !settings.TwoFactorEnabled {
+		return Err2FANotEnabled
+	}
+	return s.userRepo.DisableTotp(userID)
 }
 
 func (s *UserService) VerifyEmail(ctx context.Context, token string) error {
@@ -398,5 +550,75 @@ func (s *UserService) sendPasswordResetEmail(to, firstName, token string) {
 			"to_name": firstName,
 		},
 	})
+}
+
+// GetSettings returns the current user's settings. Caller must ensure userID is the authenticated user. Creates default settings if missing.
+func (s *UserService) GetSettings(ctx context.Context, userID string) (*dto.SettingsResponse, error) {
+	settings, err := s.userRepo.GetOrCreateUserSettings(userID)
+	if err != nil {
+		return nil, err
+	}
+	if settings == nil {
+		return nil, errors.New("user settings not found")
+	}
+	return toSettingsResponse(settings), nil
+}
+
+// UpdateSettings applies a partial update to the user's settings. Only non-nil fields in req are updated. Creates default settings if missing.
+func (s *UserService) UpdateSettings(ctx context.Context, userID string, req *dto.UpdateSettingsRequest) (*dto.SettingsResponse, error) {
+	current, err := s.userRepo.GetOrCreateUserSettings(userID)
+	if err != nil {
+		return nil, err
+	}
+	if current == nil {
+		return nil, errors.New("user settings not found")
+	}
+	// Merge: only update fields that were sent (non-nil in req).
+	if req.PinHash != nil {
+		current.PinHash = req.PinHash
+	}
+	if req.BiometricEnabled != nil {
+		current.BiometricEnabled = *req.BiometricEnabled
+	}
+	if req.TwoFactorEnabled != nil {
+		current.TwoFactorEnabled = *req.TwoFactorEnabled
+	}
+	if req.DailyTransferLimit != nil {
+		current.DailyTransferLimit = req.DailyTransferLimit
+	}
+	if req.MonthlyTransferLimit != nil {
+		current.MonthlyTransferLimit = req.MonthlyTransferLimit
+	}
+	if req.TransactionAlertsEnabled != nil {
+		current.TransactionAlertsEnabled = *req.TransactionAlertsEnabled
+	}
+	if req.Language != nil {
+		current.Language = req.Language
+	}
+	if req.Theme != nil {
+		current.Theme = req.Theme
+	}
+	current.UpdatedAt = time.Now()
+	if err := s.userRepo.UpdateUserSettings(current); err != nil {
+		return nil, err
+	}
+	return toSettingsResponse(current), nil
+}
+
+func toSettingsResponse(s *model.UserSettings) *dto.SettingsResponse {
+	resp := &dto.SettingsResponse{
+		UserID:                   s.UserID,
+		PinHash:                  s.PinHash,
+		BiometricEnabled:         s.BiometricEnabled,
+		TwoFactorEnabled:         s.TwoFactorEnabled,
+		DailyTransferLimit:       s.DailyTransferLimit,
+		MonthlyTransferLimit:     s.MonthlyTransferLimit,
+		TransactionAlertsEnabled: s.TransactionAlertsEnabled,
+		Language:                 s.Language,
+		Theme:                    s.Theme,
+		CreatedAt:                s.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:                s.UpdatedAt.Format(time.RFC3339),
+	}
+	return resp
 }
 

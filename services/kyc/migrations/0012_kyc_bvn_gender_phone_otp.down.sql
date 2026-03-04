@@ -1,0 +1,3 @@
+ALTER TABLE kyc_bvn DROP COLUMN IF EXISTS gender;
+ALTER TABLE kyc_phone DROP COLUMN IF EXISTS otp_code;
+ALTER TABLE kyc_phone DROP COLUMN IF EXISTS otp_expires_at;

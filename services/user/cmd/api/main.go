@@ -3,14 +3,18 @@ package main
 
 import (
 	"log"
+	"net"
 
 	"github.com/abubakvr/payup-backend/services/user/internal/config"
 	"github.com/abubakvr/payup-backend/services/user/internal/controller"
+	"github.com/abubakvr/payup-backend/services/user/internal/grpc"
 	"github.com/abubakvr/payup-backend/services/user/internal/kafka"
 	"github.com/abubakvr/payup-backend/services/user/internal/repository"
 	"github.com/abubakvr/payup-backend/services/user/internal/router"
 	"github.com/abubakvr/payup-backend/services/user/internal/service"
 	"github.com/abubakvr/payup-backend/services/user/redis"
+	userpb "github.com/abubakvr/payup-backend/proto/user"
+	grpclib "google.golang.org/grpc"
 )
 
 func main() {
@@ -29,6 +33,20 @@ func main() {
 	r := router.SetupRouter(cfg, userCtrl)
 
 	redis.InitRedis()
+
+	// gRPC server for KYC service (GetUserForKYC)
+	go func() {
+		lis, err := net.Listen("tcp", ":"+cfg.GrpcPort)
+		if err != nil {
+			log.Fatalf("grpc listen: %v", err)
+		}
+		srv := grpclib.NewServer()
+		userpb.RegisterUserServiceForKYCServer(srv, grpc.NewKYCUserServer(userRepo))
+		log.Printf("User gRPC (KYC) listening on port %s", cfg.GrpcPort)
+		if err := srv.Serve(lis); err != nil {
+			log.Fatalf("grpc serve: %v", err)
+		}
+	}()
 
 	log.Printf("User service running on port %s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {

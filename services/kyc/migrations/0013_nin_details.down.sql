@@ -1,0 +1,8 @@
+ALTER TABLE kyc_nin
+  DROP COLUMN IF EXISTS first_name,
+  DROP COLUMN IF EXISTS last_name,
+  DROP COLUMN IF EXISTS middle_name,
+  DROP COLUMN IF EXISTS email,
+  DROP COLUMN IF EXISTS phone_number,
+  DROP COLUMN IF EXISTS date_of_birth,
+  DROP COLUMN IF EXISTS photo;
