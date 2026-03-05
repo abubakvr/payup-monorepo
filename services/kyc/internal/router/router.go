@@ -55,5 +55,26 @@ func SetupRouter(cfg *config.Config, ctrl *controller.KYCController) *gin.Engine
 	r.GET("/address/verification", ctrl.GetAddressVerification)
 	r.POST("/address/:imageType/upload", ctrl.UploadAddressVerificationImage) // imageType: utility-bill | proof-of-address
 
+	// Admin (X-Admin-Key required)
+	admin := r.Group("/admin", adminKeyAuth(cfg.AdminAPIKey))
+	admin.GET("/users/:userID/kyc", ctrl.AdminGetUserKYC)
+	admin.GET("/users/:userID/kyc/images/:type", ctrl.AdminDownloadImage)
+	admin.PUT("/users/:userID/kyc/steps/:step/rejection-message", ctrl.AdminSetStepRejectionMessage)
+
 	return r
+}
+
+func adminKeyAuth(adminKey string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if adminKey == "" {
+			c.AbortWithStatusJSON(401, gin.H{"status": "error", "message": "admin API not configured"})
+			return
+		}
+		key := c.GetHeader("X-Admin-Key")
+		if key != adminKey {
+			c.AbortWithStatusJSON(401, gin.H{"status": "error", "message": "invalid or missing X-Admin-Key"})
+			return
+		}
+		c.Next()
+	}
 }

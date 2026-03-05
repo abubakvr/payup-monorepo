@@ -21,6 +21,7 @@ type RefreshTokenInserter interface {
 }
 
 var ErrInvalidCredentials = errors.New("invalid email or password")
+var ErrUserNotFound = errors.New("user not found")
 
 type UserRepository struct {
 	db       *sql.DB
@@ -212,10 +213,10 @@ func (r *UserRepository) DisableTotp(userID string) error {
 }
 
 func (r *UserRepository) Login(loginRequest model.LoginRequest) (*model.User, error) {
-	query := `SELECT id, email, first_name, last_name, phone_number, phone_number_hash, password_hash, email_verified, created_at, updated_at FROM users WHERE email = $1`
+	query := `SELECT id, email, first_name, last_name, phone_number, phone_number_hash, password_hash, email_verified, COALESCE(banking_restricted, false), created_at, updated_at FROM users WHERE email = $1`
 	row := r.db.QueryRow(query, loginRequest.Email)
 	var user model.User
-	err := row.Scan(&user.ID, &user.Email, &user.FirstName, &user.LastName, &user.PhoneNumber, &user.PhoneNumberHash, &user.PasswordHash, &user.EmailVerified, &user.CreatedAt, &user.UpdatedAt)
+	err := row.Scan(&user.ID, &user.Email, &user.FirstName, &user.LastName, &user.PhoneNumber, &user.PhoneNumberHash, &user.PasswordHash, &user.EmailVerified, &user.BankingRestricted, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrInvalidCredentials
@@ -253,10 +254,10 @@ func (r *UserRepository) CreateRefreshToken(token model.RefreshToken) error {
 }
 
 func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
-	query := `SELECT id, email, first_name, last_name, phone_number, phone_number_hash, password_hash, email_verified, created_at, updated_at FROM users WHERE email = $1`
+	query := `SELECT id, email, first_name, last_name, phone_number, phone_number_hash, password_hash, email_verified, COALESCE(banking_restricted, false), created_at, updated_at FROM users WHERE email = $1`
 	row := r.db.QueryRow(query, email)
 	var user model.User
-	err := row.Scan(&user.ID, &user.Email, &user.FirstName, &user.LastName, &user.PhoneNumber, &user.PhoneNumberHash, &user.PasswordHash, &user.EmailVerified, &user.CreatedAt, &user.UpdatedAt)
+	err := row.Scan(&user.ID, &user.Email, &user.FirstName, &user.LastName, &user.PhoneNumber, &user.PhoneNumberHash, &user.PasswordHash, &user.EmailVerified, &user.BankingRestricted, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -267,18 +268,18 @@ func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
 }
 
 func (r *UserRepository) GetUserByPhoneNumber(phoneNumber string) (*model.User, error) {
-	query := `SELECT id, email, first_name, last_name, phone_number, phone_number_hash, password_hash, email_verified, created_at, updated_at FROM users WHERE phone_number = $1`
+	query := `SELECT id, email, first_name, last_name, phone_number, phone_number_hash, password_hash, email_verified, COALESCE(banking_restricted, false), created_at, updated_at FROM users WHERE phone_number = $1`
 	row := r.db.QueryRow(query, phoneNumber)
 	var user model.User
-	err := row.Scan(&user.ID, &user.Email, &user.FirstName, &user.LastName, &user.PhoneNumber, &user.PhoneNumberHash, &user.PasswordHash, &user.EmailVerified, &user.CreatedAt, &user.UpdatedAt)
+	err := row.Scan(&user.ID, &user.Email, &user.FirstName, &user.LastName, &user.PhoneNumber, &user.PhoneNumberHash, &user.PasswordHash, &user.EmailVerified, &user.BankingRestricted, &user.CreatedAt, &user.UpdatedAt)
 	return &user, err
 }
 
 func (r *UserRepository) GetUserByPhoneNumberHash(phoneHash string) (*model.User, error) {
-	query := `SELECT id, email, first_name, last_name, phone_number, phone_number_hash, password_hash, email_verified, created_at, updated_at FROM users WHERE phone_number_hash = $1`
+	query := `SELECT id, email, first_name, last_name, phone_number, phone_number_hash, password_hash, email_verified, COALESCE(banking_restricted, false), created_at, updated_at FROM users WHERE phone_number_hash = $1`
 	row := r.db.QueryRow(query, phoneHash)
 	var user model.User
-	err := row.Scan(&user.ID, &user.Email, &user.FirstName, &user.LastName, &user.PhoneNumber, &user.PhoneNumberHash, &user.PasswordHash, &user.EmailVerified, &user.CreatedAt, &user.UpdatedAt)
+	err := row.Scan(&user.ID, &user.Email, &user.FirstName, &user.LastName, &user.PhoneNumber, &user.PhoneNumberHash, &user.PasswordHash, &user.EmailVerified, &user.BankingRestricted, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -289,10 +290,10 @@ func (r *UserRepository) GetUserByPhoneNumberHash(phoneHash string) (*model.User
 }
 
 func (r *UserRepository) GetUserByID(id string) (*model.User, error) {
-	query := `SELECT id, email, first_name, last_name, phone_number, phone_number_hash, password_hash, email_verified, created_at, updated_at FROM users WHERE id = $1`
+	query := `SELECT id, email, first_name, last_name, phone_number, phone_number_hash, password_hash, email_verified, COALESCE(banking_restricted, false), created_at, updated_at FROM users WHERE id = $1`
 	row := r.db.QueryRow(query, id)
 	var user model.User
-	err := row.Scan(&user.ID, &user.Email, &user.FirstName, &user.LastName, &user.PhoneNumber, &user.PhoneNumberHash, &user.PasswordHash, &user.EmailVerified, &user.CreatedAt, &user.UpdatedAt)
+	err := row.Scan(&user.ID, &user.Email, &user.FirstName, &user.LastName, &user.PhoneNumber, &user.PhoneNumberHash, &user.PasswordHash, &user.EmailVerified, &user.BankingRestricted, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -300,6 +301,68 @@ func (r *UserRepository) GetUserByID(id string) (*model.User, error) {
 		return nil, err
 	}
 	return &user, nil
+}
+
+// ExistsByID returns true if a user with the given ID exists. Used for auth validate (with Redis cache).
+func (r *UserRepository) ExistsByID(id string) (bool, error) {
+	var n int
+	err := r.db.QueryRow(`SELECT 1 FROM users WHERE id = $1 LIMIT 1`).Scan(&n)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+// SetBankingRestricted sets the banking_restricted flag for the user. Returns nil if user not found.
+func (r *UserRepository) SetBankingRestricted(userID string, restricted bool) error {
+	res, err := r.db.Exec(`UPDATE users SET banking_restricted = $1, updated_at = $2 WHERE id = $3`, restricted, time.Now(), userID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
+// CountUsers returns the total number of users (for pagination total).
+func (r *UserRepository) CountUsers() (int, error) {
+	var n int
+	err := r.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&n)
+	return n, err
+}
+
+// ListUsers returns users for admin listing. Excludes password_hash. limit/offset for pagination (max limit 500).
+func (r *UserRepository) ListUsers(limit, offset int) ([]model.User, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 500 {
+		limit = 500
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	query := `SELECT id, email, first_name, last_name, phone_number, phone_number_hash, email_verified, COALESCE(banking_restricted, false), created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`
+	rows, err := r.db.Query(query, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var users []model.User
+	for rows.Next() {
+		var u model.User
+		err := rows.Scan(&u.ID, &u.Email, &u.FirstName, &u.LastName, &u.PhoneNumber, &u.PhoneNumberHash, &u.EmailVerified, &u.BankingRestricted, &u.CreatedAt, &u.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, rows.Err()
 }
 
 func (r *UserRepository) GetEmailVerificationToken(tokenHashHex string) (*model.EmailVerificationToken, error) {

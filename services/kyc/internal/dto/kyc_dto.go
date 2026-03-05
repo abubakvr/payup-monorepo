@@ -30,6 +30,7 @@ type StepSubmittedItem struct {
 	Step      string `json:"step"`
 	Submitted bool   `json:"submitted"`
 	Verified  bool   `json:"verified"`
+	Message   string `json:"message,omitempty"` // rejection message from admin when KYC/step is rejected
 }
 
 // StepsSubmittedResponse is returned by GET /kyc/steps/submitted.
@@ -111,6 +112,7 @@ type PersonalDetailsResponse struct {
 	NextOfKinPhone string `json:"nextOfKinPhone,omitempty"`
 	PEPStatus      bool   `json:"pepStatus"`
 	Submitted      bool   `json:"submitted"` // true when KYC has been submitted for review
+	Message        string `json:"message,omitempty"` // rejection message from admin when KYC is rejected
 }
 
 // IdentityDocumentsRequest for POST/PUT /kyc/identity
@@ -131,6 +133,7 @@ type IdentityDocumentsResponse struct {
 	SignatureURL       string `json:"signatureUrl,omitempty"`
 	VerificationStatus string `json:"verificationStatus"`
 	Submitted          bool   `json:"submitted"` // true when KYC has been submitted for review
+	Message            string `json:"message,omitempty"` // rejection message from admin when KYC is rejected
 }
 
 // IdentityImageUploadResponse for POST /kyc/identity/:imageType/upload — returns URL and full identity payload for frontend.
@@ -165,6 +168,7 @@ type AddressResponse struct {
 	ProofOfAddressURL  string `json:"proofOfAddressUrl,omitempty"`
 	VerificationStatus string `json:"verificationStatus"`
 	Submitted          bool   `json:"submitted"` // true when KYC has been submitted for review (overall_status = pending_review)
+	Message            string `json:"message,omitempty"` // rejection message from admin when KYC is rejected
 }
 
 // AddressVerificationResponse for GET /kyc/address/verification (utility bill + proof of address URLs).
@@ -189,27 +193,110 @@ type ReverseGeocodeRequest struct {
 	Source    string   `json:"source" binding:"omitempty,max=50"`  // e.g. mobile_app, web
 }
 
-// ReverseGeocodeResponse returned after saving reverse-geocoded address (GET/POST /address/reverse-geocode).
+// AdminKYCResponse is full KYC data for one user (admin only; decrypted fields and image URLs).
+type AdminKYCResponse struct {
+	Profile              AdminKYCProfile              `json:"profile"`
+	Identity              AdminKYCIdentity             `json:"identity,omitempty"`
+	Address               AdminKYCAddress             `json:"address,omitempty"`
+	AddressVerification   AdminKYCAddressVerification  `json:"addressVerification,omitempty"`
+	Personal              AdminKYCPersonal            `json:"personal,omitempty"`
+	BVN                   AdminKYCBVN                 `json:"bvn,omitempty"`
+	NIN                   AdminKYCNIN                 `json:"nin,omitempty"`
+	Phone                 AdminKYCPhone               `json:"phone,omitempty"`
+	Steps                 []StepStatus                 `json:"steps,omitempty"`
+}
+
+type AdminKYCProfile struct {
+	ID            string  `json:"id"`
+	UserID        string  `json:"userId"`
+	KYCLevel      int     `json:"kycLevel"`
+	OverallStatus string  `json:"overallStatus"`
+	CurrentStep   string  `json:"currentStep"`
+	SubmittedAt   *string `json:"submittedAt,omitempty"`
+}
+
+type AdminKYCIdentity struct {
+	IDType             string `json:"idType"`
+	IDFrontURL         string `json:"idFrontUrl"`
+	IDBackURL          string `json:"idBackUrl"`
+	CustomerImageURL   string `json:"customerImageUrl"`
+	SignatureURL       string `json:"signatureUrl"`
+	VerificationStatus string `json:"verificationStatus"`
+}
+
+type AdminKYCAddress struct {
+	HouseNumber string `json:"houseNumber"`
+	Street      string `json:"street"`
+	City        string `json:"city"`
+	LGA         string `json:"lga"`
+	State       string `json:"state"`
+	FullAddress string `json:"fullAddress"`
+	Landmark    string `json:"landmark"`
+}
+
+type AdminKYCAddressVerification struct {
+	UtilityBillURL     string   `json:"utilityBillUrl"`
+	ProofOfAddressURL  string   `json:"proofOfAddressUrl"`
+	GPSLatitude        float64  `json:"gpsLatitude"`
+	GPSLongitude       float64  `json:"gpsLongitude"`
+	ReversedGeoAddress string  `json:"reversedGeoAddress,omitempty"`
+	VerificationStatus string  `json:"verificationStatus"`
+}
+
+type AdminKYCPersonal struct {
+	DateOfBirth    string `json:"dateOfBirth"`
+	Gender         string `json:"gender"`
+	PEPStatus      bool   `json:"pepStatus"`
+	NextOfKinName  string `json:"nextOfKinName"`
+	NextOfKinPhone string `json:"nextOfKinPhone"`
+}
+
+type AdminKYCBVN struct {
+	BVNMasked   string `json:"bvnMasked"`
+	FullName    string `json:"fullName"`
+	DateOfBirth string `json:"dateOfBirth"`
+	Phone       string `json:"phone"`
+	Gender      string `json:"gender"`
+	Verified    bool   `json:"verified"`
+}
+
+type AdminKYCNIN struct {
+	NINMasked   string `json:"ninMasked"`
+	FirstName   string `json:"firstName"`
+	LastName    string `json:"lastName"`
+	MiddleName  string `json:"middleName"`
+	DateOfBirth string `json:"dateOfBirth"`
+	Phone       string `json:"phone"`
+	Verified    bool   `json:"verified"`
+}
+
+type AdminKYCPhone struct {
+	PhoneMasked string `json:"phoneMasked"`
+	Verified    bool   `json:"verified"`
+}
+
+// ReverseGeocodeResponse returned by GET/POST /address/reverse-geocode. Matches frontend ReverseGeocodeData.
+// All address/coordinate fields are always present so the envelope shape is consistent (0 or "" when no data).
 type ReverseGeocodeResponse struct {
-	ID                string   `json:"geolocationId,omitempty"`
-	Latitude          float64  `json:"latitude,omitempty"`
-	Longitude         float64  `json:"longitude,omitempty"`
-	Accuracy          *float64 `json:"accuracy,omitempty"`
-	FormattedAddress  string   `json:"formattedAddress,omitempty"`
-	AddressLine1      string   `json:"addressLine1,omitempty"`
-	AddressLine2      string   `json:"addressLine2,omitempty"`
-	Street            string   `json:"street,omitempty"`
-	City              string   `json:"city,omitempty"`
-	County            string   `json:"county,omitempty"`   // LGA in Nigerian context
-	State             string   `json:"state,omitempty"`
-	StateCode         string   `json:"stateCode,omitempty"`
-	Country           string   `json:"country,omitempty"`
-	CountryCode       string   `json:"countryCode,omitempty"`
-	Postcode          string   `json:"postcode,omitempty"`
-	IsCurrent         bool     `json:"isCurrent,omitempty"`
-	Verified          bool     `json:"verified,omitempty"`
-	Source            string   `json:"source,omitempty"`
-	CreatedAt         string   `json:"createdAt,omitempty"` // ISO8601
-	VerificationStatus string  `json:"verificationStatus"`  // "verified" | "unverified"
-	Submitted         bool     `json:"submitted"`            // true when a geolocation has been saved
+	ID                 string   `json:"geolocationId,omitempty"`
+	Latitude           float64  `json:"latitude"`
+	Longitude          float64  `json:"longitude"`
+	Accuracy           *float64 `json:"accuracy,omitempty"`
+	FormattedAddress   string   `json:"formattedAddress"`
+	AddressLine1       string   `json:"addressLine1"`
+	AddressLine2       string   `json:"addressLine2"`
+	Street             string   `json:"street"`
+	City               string   `json:"city"`
+	County             string   `json:"county"`   // LGA in Nigerian context
+	State              string   `json:"state"`
+	StateCode          string   `json:"stateCode"`
+	Country            string   `json:"country"`
+	CountryCode        string   `json:"countryCode"`
+	Postcode           string   `json:"postcode"`
+	IsCurrent          bool     `json:"isCurrent"`
+	Verified           bool     `json:"verified"`
+	Source             string   `json:"source,omitempty"`
+	CreatedAt          string   `json:"createdAt,omitempty"` // ISO8601
+	VerificationStatus string   `json:"verificationStatus"`  // "verified" | "unverified"
+	Submitted          bool     `json:"submitted"`           // true when a geolocation has been saved
 }

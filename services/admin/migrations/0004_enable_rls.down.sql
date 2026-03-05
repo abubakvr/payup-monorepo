@@ -1,0 +1,2 @@
+DROP POLICY IF EXISTS admin_service_policy ON admins;
+ALTER TABLE admins DISABLE ROW LEVEL SECURITY;

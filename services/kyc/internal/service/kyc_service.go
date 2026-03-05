@@ -18,6 +18,7 @@ import (
 	"github.com/abubakvr/payup-backend/services/kyc/internal/kafka"
 	"github.com/abubakvr/payup-backend/services/kyc/internal/model"
 	"github.com/abubakvr/payup-backend/services/kyc/internal/repository"
+	"github.com/abubakvr/payup-backend/services/kyc/internal/worker"
 	"github.com/google/uuid"
 )
 
@@ -50,10 +51,11 @@ type KYCService struct {
 	notifier        *kafka.NotificationProducer
 	dojahConfig     dojah.Config
 	selfieUploader  SelfieUploader
+	uploadPool      *worker.Pool // optional: when set, image uploads run in worker pool
 }
 
-func NewKYCService(repo *repository.KYCRepository, userClient *clients.UserClient, auditProducer *kafka.AuditProducer, notifier *kafka.NotificationProducer, dojahConfig dojah.Config, selfieUploader SelfieUploader) *KYCService {
-	return &KYCService{repo: repo, userClient: userClient, auditProducer: auditProducer, notifier: notifier, dojahConfig: dojahConfig, selfieUploader: selfieUploader}
+func NewKYCService(repo *repository.KYCRepository, userClient *clients.UserClient, auditProducer *kafka.AuditProducer, notifier *kafka.NotificationProducer, dojahConfig dojah.Config, selfieUploader SelfieUploader, uploadPool *worker.Pool) *KYCService {
+	return &KYCService{repo: repo, userClient: userClient, auditProducer: auditProducer, notifier: notifier, dojahConfig: dojahConfig, selfieUploader: selfieUploader, uploadPool: uploadPool}
 }
 
 func (s *KYCService) sendAudit(action, entity, entityID, userID string, metadata map[string]interface{}) {
@@ -198,7 +200,7 @@ func (s *KYCService) GetStepsStatus(userID string) (*dto.StepsStatusResponse, er
 	return resp, nil
 }
 
-// GetStepsSubmitted returns a list of steps with submitted and verified flags. Submitted comes from kyc_profile.steps_submitted; verified from step status and child tables.
+// GetStepsSubmitted returns a list of steps with submitted, verified, and optional rejection message per step.
 func (s *KYCService) GetStepsSubmitted(userID string) (*dto.StepsSubmittedResponse, error) {
 	p, err := s.getProfile(userID)
 	if err != nil || p == nil {
@@ -209,12 +211,32 @@ func (s *KYCService) GetStepsSubmitted(userID string) (*dto.StepsSubmittedRespon
 	for _, st := range steps {
 		stepStatus[st.StepName] = st.Status
 	}
+	// Load rejection messages for personal, identity, address
+	var personalMsg, identityMsg, addressMsg string
+	if pers, _ := s.repo.GetPersonalByProfileID(p.ID); pers != nil {
+		personalMsg = pers.RejectionMessage
+	}
+	if ident, _ := s.repo.GetIdentityByProfileID(p.ID); ident != nil {
+		identityMsg = ident.RejectionMessage
+	}
+	if addr, _ := s.repo.GetAddressByProfileID(p.ID); addr != nil {
+		addressMsg = addr.RejectionMessage
+	}
 	allSteps := []string{model.StepBVN, model.StepPhone, model.StepNIN, model.StepPersonal, model.StepIdentity, model.StepAddress, model.StepAddressVerification, model.StepAddressGeocode}
 	var list []dto.StepSubmittedItem
 	for _, step := range allSteps {
 		submitted := p.StepsSubmitted != nil && p.StepsSubmitted[step]
 		_, verified := s.stepSubmittedAndVerified(p.ID, step, stepStatus)
-		list = append(list, dto.StepSubmittedItem{Step: step, Submitted: submitted, Verified: verified})
+		msg := ""
+		switch step {
+		case model.StepPersonal:
+			msg = personalMsg
+		case model.StepIdentity:
+			msg = identityMsg
+		case model.StepAddress:
+			msg = addressMsg
+		}
+		list = append(list, dto.StepSubmittedItem{Step: step, Submitted: submitted, Verified: verified, Message: msg})
 	}
 	return &dto.StepsSubmittedResponse{Steps: list}, nil
 }
@@ -302,9 +324,7 @@ func normalizePhoneForSMS(phone string) string {
 	if phone == "" {
 		return ""
 	}
-	if strings.HasPrefix(phone, "+") {
-		phone = phone[1:]
-	}
+	phone = strings.TrimPrefix(phone, "+")
 	if strings.HasPrefix(phone, "0") && len(phone) == 11 {
 		return "234" + phone[1:]
 	}
@@ -727,6 +747,7 @@ func (s *KYCService) GetPersonal(userID string) (*dto.PersonalDetailsResponse, e
 	pepStatus := pep == "true" || pep == "1"
 	return &dto.PersonalDetailsResponse{
 		DateOfBirth: dob, Gender: gender, NextOfKinName: nokName, NextOfKinPhone: nokPhone, PEPStatus: pepStatus, Submitted: submitted,
+		Message: det.RejectionMessage,
 	}, nil
 }
 
@@ -773,6 +794,7 @@ func (s *KYCService) GetIdentity(userID string) (*dto.IdentityDocumentsResponse,
 	return &dto.IdentityDocumentsResponse{
 		IDType: det.IDType, IDFrontURL: det.IDFrontURL, IDBackURL: det.IDBackURL,
 		CustomerImageURL: det.CustomerImageURL, SignatureURL: det.SignatureURL, VerificationStatus: status, Submitted: submitted,
+		Message: det.RejectionMessage,
 	}, nil
 }
 
@@ -800,9 +822,34 @@ const (
 	IdentityImageTypeSignature = "signature"
 )
 
-// UploadIdentityImageSlot uploads one identity image to S3, deletes the old object if re-uploading, saves the new URL, and returns it.
-// imageType: id_front, id_back, customer_image, signature. Optional idType when creating new identity (passport, drivers_license, national_id).
+// UploadIdentityImageSlot uploads one identity image to S3 (sync or via upload worker pool when configured).
 func (s *KYCService) UploadIdentityImageSlot(ctx context.Context, userID, imageType, idType string, body []byte, contentType string) (uploadedURL string, err error) {
+	if s.uploadPool != nil {
+		bodyCopy := make([]byte, len(body))
+		copy(bodyCopy, body)
+		type result struct {
+			url string
+			err error
+		}
+		resultCh := make(chan result, 1)
+		ok := s.uploadPool.Submit(ctx, worker.Job{
+			Run: func(ctx context.Context) error {
+				url, err := s.uploadIdentityImageSync(ctx, userID, imageType, idType, bodyCopy, contentType)
+				resultCh <- result{url, err}
+				return err
+			},
+		})
+		if !ok {
+			return "", errors.New("upload queue full or context cancelled")
+		}
+		res := <-resultCh
+		return res.url, res.err
+	}
+	return s.uploadIdentityImageSync(ctx, userID, imageType, idType, body, contentType)
+}
+
+// uploadIdentityImageSync does the actual S3 upload and DB update for one identity image.
+func (s *KYCService) uploadIdentityImageSync(ctx context.Context, userID, imageType, idType string, body []byte, contentType string) (uploadedURL string, err error) {
 	p, err := s.getProfile(userID)
 	if err != nil || p == nil {
 		return "", err
@@ -924,6 +971,7 @@ func (s *KYCService) GetAddress(userID string) (*dto.AddressResponse, error) {
 		ProofOfAddressURL:  proofOfAddressURL,
 		VerificationStatus: status,
 		Submitted:          submitted,
+		Message:            det.RejectionMessage,
 	}, nil
 }
 
@@ -974,8 +1022,34 @@ const (
 	AddressVerificationImageProofOfAddress = "proof_of_address"
 )
 
-// UploadAddressVerificationImageSlot uploads one address verification image (utility bill or proof of address), deletes old if re-upload, saves URL, returns it.
+// UploadAddressVerificationImageSlot uploads one address verification image (utility bill or proof of address), sync or via worker pool.
 func (s *KYCService) UploadAddressVerificationImageSlot(ctx context.Context, userID, imageType string, body []byte, contentType string) (uploadedURL string, err error) {
+	if s.uploadPool != nil {
+		bodyCopy := make([]byte, len(body))
+		copy(bodyCopy, body)
+		type result struct {
+			url string
+			err error
+		}
+		resultCh := make(chan result, 1)
+		ok := s.uploadPool.Submit(ctx, worker.Job{
+			Run: func(ctx context.Context) error {
+				url, err := s.uploadAddressVerificationSync(ctx, userID, imageType, bodyCopy, contentType)
+				resultCh <- result{url, err}
+				return err
+			},
+		})
+		if !ok {
+			return "", errors.New("upload queue full or context cancelled")
+		}
+		res := <-resultCh
+		return res.url, res.err
+	}
+	return s.uploadAddressVerificationSync(ctx, userID, imageType, body, contentType)
+}
+
+// uploadAddressVerificationSync does the actual S3 upload and DB update for one address verification image.
+func (s *KYCService) uploadAddressVerificationSync(ctx context.Context, userID, imageType string, body []byte, contentType string) (uploadedURL string, err error) {
 	p, err := s.getProfile(userID)
 	if err != nil || p == nil {
 		return "", err
@@ -1198,4 +1272,300 @@ func (s *KYCService) GetAddressGeolocation(userID string) (*dto.ReverseGeocodeRe
 		VerificationStatus: status,
 		Submitted:          true,
 	}, nil
+}
+
+// GetFullKYCByUserID returns full KYC data for a user (admin only): profile, identity, address, address verification, personal, BVN, NIN, phone, steps (decrypted where applicable).
+func (s *KYCService) GetFullKYCByUserID(userID string) (*dto.AdminKYCResponse, error) {
+	p, err := s.getProfile(userID)
+	if err != nil || p == nil {
+		return nil, err
+	}
+	out := &dto.AdminKYCResponse{}
+	out.Profile = dto.AdminKYCProfile{
+		ID:            p.ID,
+		UserID:        p.UserID,
+		KYCLevel:      p.KYCLevel,
+		OverallStatus: p.OverallStatus,
+		CurrentStep:   p.CurrentStep,
+	}
+	if p.SubmittedAt != nil {
+		t := p.SubmittedAt.Format(time.RFC3339)
+		out.Profile.SubmittedAt = &t
+	}
+
+	if id, _ := s.repo.GetIdentityByProfileID(p.ID); id != nil {
+		out.Identity = dto.AdminKYCIdentity{
+			IDType:             id.IDType,
+			IDFrontURL:         id.IDFrontURL,
+			IDBackURL:          id.IDBackURL,
+			CustomerImageURL:   id.CustomerImageURL,
+			SignatureURL:       id.SignatureURL,
+			VerificationStatus: id.VerificationStatus,
+		}
+	}
+	if addr, _ := s.repo.GetAddressByProfileID(p.ID); addr != nil {
+		house, _ := s.repo.Decrypt(addr.HouseNumberEncrypted)
+		street, _ := s.repo.Decrypt(addr.StreetEncrypted)
+		city, _ := s.repo.Decrypt(addr.CityEncrypted)
+		lga, _ := s.repo.Decrypt(addr.LGAEncrypted)
+		state, _ := s.repo.Decrypt(addr.StateEncrypted)
+		full, _ := s.repo.Decrypt(addr.FullAddressEncrypted)
+		landmark, _ := s.repo.Decrypt(addr.LandmarkEncrypted)
+		out.Address = dto.AdminKYCAddress{
+			HouseNumber: house, Street: street, City: city, LGA: lga, State: state, FullAddress: full, Landmark: landmark,
+		}
+	}
+	if av, _ := s.repo.GetAddressVerificationByProfileID(p.ID); av != nil {
+		reversed, _ := s.repo.Decrypt(av.ReversedGeoAddressEncrypted)
+		out.AddressVerification = dto.AdminKYCAddressVerification{
+			UtilityBillURL:     av.UtilityBillURL,
+			ProofOfAddressURL:  av.StreetImageURL,
+			GPSLatitude:        av.GPSLatitude,
+			GPSLongitude:       av.GPSLongitude,
+			ReversedGeoAddress: reversed,
+			VerificationStatus: av.VerificationStatus,
+		}
+	}
+	if pers, _ := s.repo.GetPersonalByProfileID(p.ID); pers != nil {
+		dob, _ := s.repo.Decrypt(pers.DateOfBirthEncrypted)
+		gender, _ := s.repo.Decrypt(pers.GenderEncrypted)
+		nokName, _ := s.repo.Decrypt(pers.NextOfKinNameEncrypted)
+		nokPhone, _ := s.repo.Decrypt(pers.NextOfKinPhoneEncrypted)
+		pep, _ := s.repo.Decrypt(pers.PEPStatusEncrypted)
+		pepStatus := strings.EqualFold(pep, "true") || pep == "1"
+		out.Personal = dto.AdminKYCPersonal{
+			DateOfBirth: dob, Gender: gender, NextOfKinName: nokName, NextOfKinPhone: nokPhone, PEPStatus: pepStatus,
+		}
+	}
+	if bvn, _ := s.repo.GetBVNByProfileID(p.ID); bvn != nil {
+		fullName, _ := s.repo.Decrypt(bvn.FullNameEncrypted)
+		dob, _ := s.repo.Decrypt(bvn.DateOfBirthEncrypted)
+		phone, _ := s.repo.Decrypt(bvn.PhoneEncrypted)
+		gender, _ := s.repo.Decrypt(bvn.GenderEncrypted)
+		bvnStr, _ := s.repo.Decrypt(bvn.BVNEncrypted)
+		out.BVN = dto.AdminKYCBVN{
+			BVNMasked:   maskLast4(bvnStr, 11),
+			FullName:    fullName,
+			DateOfBirth: dob,
+			Phone:       phone,
+			Gender:      gender,
+			Verified:    bvn.VerificationStatus == model.StatusVerified,
+		}
+	}
+	if nin, _ := s.repo.GetNINByProfileID(p.ID); nin != nil {
+		first, _ := s.repo.Decrypt(nin.FirstNameEncrypted)
+		last, _ := s.repo.Decrypt(nin.LastNameEncrypted)
+		middle, _ := s.repo.Decrypt(nin.MiddleNameEncrypted)
+		dob, _ := s.repo.Decrypt(nin.DateOfBirthEncrypted)
+		phone, _ := s.repo.Decrypt(nin.PhoneEncrypted)
+		ninStr, _ := s.repo.Decrypt(nin.NINEncrypted)
+		out.NIN = dto.AdminKYCNIN{
+			NINMasked:   maskLast4(ninStr, 11),
+			FirstName:   first,
+			LastName:    last,
+			MiddleName:  middle,
+			DateOfBirth: dob,
+			Phone:       phone,
+			Verified:    nin.VerificationStatus == model.StatusVerified,
+		}
+	}
+	if ph, _ := s.repo.GetPhoneByProfileID(p.ID); ph != nil {
+		phoneMasked := ""
+		if len(ph.PhoneEncrypted) > 0 {
+			pd, _ := s.repo.Decrypt(ph.PhoneEncrypted)
+			phoneMasked = maskPhone(pd)
+		}
+		out.Phone = dto.AdminKYCPhone{
+			PhoneMasked: phoneMasked,
+			Verified:    ph.VerificationStatus == model.StatusVerified,
+		}
+	}
+	steps, _ := s.repo.GetStepStatuses(p.ID)
+	for _, st := range steps {
+		out.Steps = append(out.Steps, dto.StepStatus{StepName: st.StepName, Status: st.Status})
+	}
+	return out, nil
+}
+
+// CountProfiles returns the number of KYC profiles, optionally filtered by status and/or kyc_level (for admin kyc-list total).
+func (s *KYCService) CountProfiles(status string, kycLevel *int32) (int64, error) {
+	return s.repo.CountProfiles(status, kycLevel)
+}
+
+// maskLast4 returns a string like "*******1234" (last 4 chars visible, rest stars; total length ~11 for BVN/NIN).
+func maskLast4(s string, totalLen int) string {
+	if len(s) < 4 {
+		return "****"
+	}
+	visible := s[len(s)-4:]
+	n := totalLen - 4
+	if n < 0 {
+		n = 7
+	}
+	return strings.Repeat("*", n) + visible
+}
+
+func maskPhone(s string) string {
+	if len(s) < 4 {
+		return "****"
+	}
+	return "****" + s[len(s)-4:]
+}
+
+// GetDecryptedImage returns decrypted image bytes and content-type for admin. imageType: id_front, id_back, customer_image, signature, utility_bill, proof_of_address.
+func (s *KYCService) GetDecryptedImage(ctx context.Context, userID, imageType string) ([]byte, string, error) {
+	p, err := s.getProfile(userID)
+	if err != nil || p == nil {
+		return nil, "", err
+	}
+	if s.selfieUploader == nil {
+		return nil, "", errors.New("file download not configured; S3 required")
+	}
+	var objectURL string
+	switch imageType {
+	case IdentityImageTypeFront:
+		id, _ := s.repo.GetIdentityByProfileID(p.ID)
+		if id != nil {
+			objectURL = id.IDFrontURL
+		}
+	case IdentityImageTypeBack:
+		id, _ := s.repo.GetIdentityByProfileID(p.ID)
+		if id != nil {
+			objectURL = id.IDBackURL
+		}
+	case IdentityImageTypeCustomer:
+		id, _ := s.repo.GetIdentityByProfileID(p.ID)
+		if id != nil {
+			objectURL = id.CustomerImageURL
+		}
+	case IdentityImageTypeSignature:
+		id, _ := s.repo.GetIdentityByProfileID(p.ID)
+		if id != nil {
+			objectURL = id.SignatureURL
+		}
+	case AddressVerificationImageUtilityBill:
+		av, _ := s.repo.GetAddressVerificationByProfileID(p.ID)
+		if av != nil {
+			objectURL = av.UtilityBillURL
+		}
+	case AddressVerificationImageProofOfAddress, "street_image":
+		av, _ := s.repo.GetAddressVerificationByProfileID(p.ID)
+		if av != nil {
+			objectURL = av.StreetImageURL
+		}
+	default:
+		return nil, "", fmt.Errorf("unknown image type: %s", imageType)
+	}
+	if objectURL == "" {
+		return nil, "", errors.New("no image uploaded for this type")
+	}
+	return s.selfieUploader.GetSelfie(ctx, objectURL)
+}
+
+// SetStepRejectionMessage sets the rejection message for a step (personal, identity, address). Admin only.
+// Marks the step as not submitted, sets KYC overall_status to in_progress and clears submitted_at.
+// If the profile was submitted, sends the user an email with message and steps.
+func (s *KYCService) SetStepRejectionMessage(userID, stepName, message string) error {
+	p, err := s.getProfile(userID)
+	if err != nil || p == nil {
+		return ErrKYCNotStarted
+	}
+	allowed := map[string]bool{model.StepPersonal: true, model.StepIdentity: true, model.StepAddress: true}
+	if !allowed[stepName] {
+		return errors.New("invalid step; allowed: personal, identity, address")
+	}
+	if err := s.repo.SetStepRejectionMessage(p.ID, stepName, message); err != nil {
+		return err
+	}
+	// Set this step to not submitted (remove from steps_submitted)
+	if err := s.repo.UnmarkStepSubmitted(p.ID, stepName); err != nil {
+		return err
+	}
+	// Set KYC status to in_progress and clear submitted_at so user must resubmit
+	if err := s.repo.ClearSubmittedAndSetInProgress(p.ID); err != nil {
+		return err
+	}
+	wasSubmitted := p.SubmittedAt != nil
+	if wasSubmitted {
+		s.sendKYCRejectedEmail(context.Background(), userID, p.ID)
+	}
+	return nil
+}
+
+// sendKYCRejectedEmail sends an email to the user with rejection message and which steps have feedback.
+func (s *KYCService) sendKYCRejectedEmail(ctx context.Context, userID, profileID string) {
+	if s.notifier == nil {
+		return
+	}
+	userResp, err := s.userClient.GetUserForKYC(ctx, userID)
+	if err != nil || userResp == nil || !userResp.Found || userResp.Email == "" {
+		return
+	}
+	var stepsWithMessages []struct{ Step, Message string }
+	for _, step := range []string{model.StepPersonal, model.StepIdentity, model.StepAddress} {
+		var msg string
+		switch step {
+		case model.StepPersonal:
+			if pers, _ := s.repo.GetPersonalByProfileID(profileID); pers != nil && pers.RejectionMessage != "" {
+				msg = pers.RejectionMessage
+			}
+		case model.StepIdentity:
+			if ident, _ := s.repo.GetIdentityByProfileID(profileID); ident != nil && ident.RejectionMessage != "" {
+				msg = ident.RejectionMessage
+			}
+		case model.StepAddress:
+			if addr, _ := s.repo.GetAddressByProfileID(profileID); addr != nil && addr.RejectionMessage != "" {
+				msg = addr.RejectionMessage
+			}
+		}
+		if msg != "" {
+			stepLabel := step
+			switch step {
+			case model.StepPersonal:
+				stepLabel = "Personal details"
+			case model.StepIdentity:
+				stepLabel = "Identity documents"
+			case model.StepAddress:
+				stepLabel = "Address"
+			}
+			stepsWithMessages = append(stepsWithMessages, struct{ Step, Message string }{stepLabel, msg})
+		}
+	}
+	if len(stepsWithMessages) == 0 {
+		return
+	}
+	toName := strings.TrimSpace(userResp.FirstName + " " + userResp.LastName)
+	if toName == "" {
+		toName = userResp.Email
+	}
+	subject := "Your KYC application needs attention"
+	var bodyLines []string
+	bodyLines = append(bodyLines, "Your KYC application was not approved and needs to be updated.")
+	bodyLines = append(bodyLines, "")
+	bodyLines = append(bodyLines, "Feedback by step:")
+	for _, s := range stepsWithMessages {
+		bodyLines = append(bodyLines, fmt.Sprintf("- %s: %s", s.Step, s.Message))
+	}
+	bodyLines = append(bodyLines, "")
+	bodyLines = append(bodyLines, "Please log in and complete the steps above, then submit again.")
+	body := strings.Join(bodyLines, "\n")
+	var htmlParts []string
+	htmlParts = append(htmlParts, "<p>Your KYC application was not approved and needs to be updated.</p>")
+	htmlParts = append(htmlParts, "<p><strong>Feedback by step:</strong></p><ul>")
+	for _, s := range stepsWithMessages {
+		htmlParts = append(htmlParts, fmt.Sprintf("<li><strong>%s:</strong> %s</li>", s.Step, s.Message))
+	}
+	htmlParts = append(htmlParts, "</ul><p>Please log in and complete the steps above, then submit again.</p>")
+	html := strings.Join(htmlParts, "")
+	_ = s.notifier.Send(kafka.NotificationEvent{
+		Type:    "kyc_rejected",
+		Channel: "email",
+		Metadata: map[string]interface{}{
+			"to":      userResp.Email,
+			"to_name": toName,
+			"subject": subject,
+			"body":    body,
+			"html":    html,
+		},
+	})
 }

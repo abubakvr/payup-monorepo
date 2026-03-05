@@ -6,7 +6,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	kycpb "github.com/abubakvr/payup-backend/services/kyc/proto/kyc"
+	kycpb "github.com/abubakvr/payup-backend/proto/kyc"
 )
 
 type KYCClient struct {

@@ -109,6 +109,198 @@ func (x *GetKYCStatusResponse) GetStatus() string {
 	return ""
 }
 
+type GetFullKYCForAdminRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFullKYCForAdminRequest) Reset() {
+	*x = GetFullKYCForAdminRequest{}
+	mi := &file_proto_kyc_kyc_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFullKYCForAdminRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFullKYCForAdminRequest) ProtoMessage() {}
+
+func (x *GetFullKYCForAdminRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_kyc_kyc_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFullKYCForAdminRequest.ProtoReflect.Descriptor instead.
+func (*GetFullKYCForAdminRequest) Descriptor() ([]byte, []int) {
+	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GetFullKYCForAdminRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type GetFullKYCForAdminResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Found         bool                   `protobuf:"varint,1,opt,name=found,proto3" json:"found,omitempty"`
+	JsonPayload   string                 `protobuf:"bytes,2,opt,name=json_payload,json=jsonPayload,proto3" json:"json_payload,omitempty"` // AdminKYCResponse as JSON when found
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFullKYCForAdminResponse) Reset() {
+	*x = GetFullKYCForAdminResponse{}
+	mi := &file_proto_kyc_kyc_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFullKYCForAdminResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFullKYCForAdminResponse) ProtoMessage() {}
+
+func (x *GetFullKYCForAdminResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_kyc_kyc_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFullKYCForAdminResponse.ProtoReflect.Descriptor instead.
+func (*GetFullKYCForAdminResponse) Descriptor() ([]byte, []int) {
+	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GetFullKYCForAdminResponse) GetFound() bool {
+	if x != nil {
+		return x.Found
+	}
+	return false
+}
+
+func (x *GetFullKYCForAdminResponse) GetJsonPayload() string {
+	if x != nil {
+		return x.JsonPayload
+	}
+	return ""
+}
+
+type CountProfilesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`                            // optional filter by overall_status (e.g. approved, pending_review, in_progress)
+	KycLevel      *int32                 `protobuf:"varint,2,opt,name=kyc_level,json=kycLevel,proto3,oneof" json:"kyc_level,omitempty"` // optional filter by kyc_level
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CountProfilesRequest) Reset() {
+	*x = CountProfilesRequest{}
+	mi := &file_proto_kyc_kyc_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CountProfilesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CountProfilesRequest) ProtoMessage() {}
+
+func (x *CountProfilesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_kyc_kyc_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CountProfilesRequest.ProtoReflect.Descriptor instead.
+func (*CountProfilesRequest) Descriptor() ([]byte, []int) {
+	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *CountProfilesRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *CountProfilesRequest) GetKycLevel() int32 {
+	if x != nil && x.KycLevel != nil {
+		return *x.KycLevel
+	}
+	return 0
+}
+
+type CountProfilesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Count         int64                  `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CountProfilesResponse) Reset() {
+	*x = CountProfilesResponse{}
+	mi := &file_proto_kyc_kyc_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CountProfilesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CountProfilesResponse) ProtoMessage() {}
+
+func (x *CountProfilesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_kyc_kyc_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CountProfilesResponse.ProtoReflect.Descriptor instead.
+func (*CountProfilesResponse) Descriptor() ([]byte, []int) {
+	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *CountProfilesResponse) GetCount() int64 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
 var File_proto_kyc_kyc_proto protoreflect.FileDescriptor
 
 const file_proto_kyc_kyc_proto_rawDesc = "" +
@@ -117,10 +309,24 @@ const file_proto_kyc_kyc_proto_rawDesc = "" +
 	"\x13GetKYCStatusRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\".\n" +
 	"\x14GetKYCStatusResponse\x12\x16\n" +
-	"\x06status\x18\x01 \x01(\tR\x06status2Q\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\"4\n" +
+	"\x19GetFullKYCForAdminRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"U\n" +
+	"\x1aGetFullKYCForAdminResponse\x12\x14\n" +
+	"\x05found\x18\x01 \x01(\bR\x05found\x12!\n" +
+	"\fjson_payload\x18\x02 \x01(\tR\vjsonPayload\"^\n" +
+	"\x14CountProfilesRequest\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12 \n" +
+	"\tkyc_level\x18\x02 \x01(\x05H\x00R\bkycLevel\x88\x01\x01B\f\n" +
+	"\n" +
+	"_kyc_level\"-\n" +
+	"\x15CountProfilesResponse\x12\x14\n" +
+	"\x05count\x18\x01 \x01(\x03R\x05count2\xf0\x01\n" +
 	"\n" +
 	"KYCService\x12C\n" +
-	"\fGetKYCStatus\x12\x18.kyc.GetKYCStatusRequest\x1a\x19.kyc.GetKYCStatusResponseB3Z1github.com/abubakvr/payup-backend/proto/kyc;kycpbb\x06proto3"
+	"\fGetKYCStatus\x12\x18.kyc.GetKYCStatusRequest\x1a\x19.kyc.GetKYCStatusResponse\x12U\n" +
+	"\x12GetFullKYCForAdmin\x12\x1e.kyc.GetFullKYCForAdminRequest\x1a\x1f.kyc.GetFullKYCForAdminResponse\x12F\n" +
+	"\rCountProfiles\x12\x19.kyc.CountProfilesRequest\x1a\x1a.kyc.CountProfilesResponseB3Z1github.com/abubakvr/payup-backend/proto/kyc;kycpbb\x06proto3"
 
 var (
 	file_proto_kyc_kyc_proto_rawDescOnce sync.Once
@@ -134,16 +340,24 @@ func file_proto_kyc_kyc_proto_rawDescGZIP() []byte {
 	return file_proto_kyc_kyc_proto_rawDescData
 }
 
-var file_proto_kyc_kyc_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_proto_kyc_kyc_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_proto_kyc_kyc_proto_goTypes = []any{
-	(*GetKYCStatusRequest)(nil),  // 0: kyc.GetKYCStatusRequest
-	(*GetKYCStatusResponse)(nil), // 1: kyc.GetKYCStatusResponse
+	(*GetKYCStatusRequest)(nil),        // 0: kyc.GetKYCStatusRequest
+	(*GetKYCStatusResponse)(nil),       // 1: kyc.GetKYCStatusResponse
+	(*GetFullKYCForAdminRequest)(nil),  // 2: kyc.GetFullKYCForAdminRequest
+	(*GetFullKYCForAdminResponse)(nil), // 3: kyc.GetFullKYCForAdminResponse
+	(*CountProfilesRequest)(nil),       // 4: kyc.CountProfilesRequest
+	(*CountProfilesResponse)(nil),      // 5: kyc.CountProfilesResponse
 }
 var file_proto_kyc_kyc_proto_depIdxs = []int32{
 	0, // 0: kyc.KYCService.GetKYCStatus:input_type -> kyc.GetKYCStatusRequest
-	1, // 1: kyc.KYCService.GetKYCStatus:output_type -> kyc.GetKYCStatusResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	2, // 1: kyc.KYCService.GetFullKYCForAdmin:input_type -> kyc.GetFullKYCForAdminRequest
+	4, // 2: kyc.KYCService.CountProfiles:input_type -> kyc.CountProfilesRequest
+	1, // 3: kyc.KYCService.GetKYCStatus:output_type -> kyc.GetKYCStatusResponse
+	3, // 4: kyc.KYCService.GetFullKYCForAdmin:output_type -> kyc.GetFullKYCForAdminResponse
+	5, // 5: kyc.KYCService.CountProfiles:output_type -> kyc.CountProfilesResponse
+	3, // [3:6] is the sub-list for method output_type
+	0, // [0:3] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -154,13 +368,14 @@ func file_proto_kyc_kyc_proto_init() {
 	if File_proto_kyc_kyc_proto != nil {
 		return
 	}
+	file_proto_kyc_kyc_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_kyc_kyc_proto_rawDesc), len(file_proto_kyc_kyc_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

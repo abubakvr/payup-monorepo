@@ -8,6 +8,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// AdminKeyAuth requires X-Admin-Key header to match cfg.AdminAPIKey. If AdminAPIKey is empty, admin routes are disabled (401).
+func AdminKeyAuth(adminKey string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if adminKey == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "admin API not configured"})
+			return
+		}
+		key := c.GetHeader("X-Admin-Key")
+		if key != adminKey {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "invalid or missing X-Admin-Key"})
+			return
+		}
+		c.Next()
+	}
+}
+
 func SetupRouter(cfg *config.Config, ctrl *controller.UserController) *gin.Engine {
 	router := gin.Default()
 
@@ -33,6 +49,13 @@ func SetupRouter(cfg *config.Config, ctrl *controller.UserController) *gin.Engin
 	router.POST("/2fa/verify-setup", ctrl.VerifySetup2FA)
 	router.POST("/2fa/verify-login", ctrl.VerifyLogin2FA)
 	router.POST("/2fa/disable", ctrl.Disable2FA)
+
+	// Admin (X-Admin-Key required)
+	admin := router.Group("/admin", AdminKeyAuth(cfg.AdminAPIKey))
+	{
+		admin.GET("/users", ctrl.AdminListUsers)
+		admin.GET("/users/:id", ctrl.AdminGetUser)
+	}
 
 	return router
 }

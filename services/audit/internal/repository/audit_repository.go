@@ -65,23 +65,75 @@ func (r *AuditRepository) GetLogs(filter model.AuditFilter) ([]model.AuditEvent,
 }
 
 func (r *AuditRepository) GetAll() ([]model.AuditEvent, error) {
+	logs, _, err := r.GetAllPaginated(0, 0)
+	return logs, err
+}
+
+func (r *AuditRepository) GetAllPaginated(limit, offset int) ([]model.AuditEvent, int64, error) {
+	countQuery := `SELECT COUNT(*) FROM audit_logs`
+	var total int64
+	if err := r.db.QueryRow(countQuery).Scan(&total); err != nil {
+		return nil, 0, err
+	}
 	query := `SELECT service, user_id, action, entity, entity_id, metadata, correlation_id, created_at FROM audit_logs ORDER BY created_at DESC`
-	rows, err := r.db.Query(query)
+	if limit > 0 {
+		query += ` LIMIT $1 OFFSET $2`
+	}
+	args := []interface{}{}
+	if limit > 0 {
+		args = append(args, limit, offset)
+	}
+	var rows *sql.Rows
+	var err error
+	if len(args) > 0 {
+		rows, err = r.db.Query(query, args...)
+	} else {
+		rows, err = r.db.Query(query)
+	}
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
-	return scanAuditRows(rows)
+	logs, err := scanAuditRows(rows)
+	if err != nil {
+		return nil, 0, err
+	}
+	return logs, total, nil
 }
 
 func (r *AuditRepository) GetByUser(userId string) ([]model.AuditEvent, error) {
+	logs, _, err := r.GetByUserPaginated(userId, 0, 0)
+	return logs, err
+}
+
+func (r *AuditRepository) GetByUserPaginated(userId string, limit, offset int) ([]model.AuditEvent, int64, error) {
+	countQuery := `SELECT COUNT(*) FROM audit_logs WHERE user_id = $1`
+	var total int64
+	if err := r.db.QueryRow(countQuery, userId).Scan(&total); err != nil {
+		return nil, 0, err
+	}
 	query := `SELECT service, user_id, action, entity, entity_id, metadata, correlation_id, created_at FROM audit_logs WHERE user_id = $1 ORDER BY created_at DESC`
-	rows, err := r.db.Query(query, userId)
+	args := []interface{}{userId}
+	if limit > 0 {
+		query += ` LIMIT $2 OFFSET $3`
+		args = append(args, limit, offset)
+	}
+	var rows *sql.Rows
+	var err error
+	if len(args) > 1 {
+		rows, err = r.db.Query(query, args...)
+	} else {
+		rows, err = r.db.Query(query, args...)
+	}
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
-	return scanAuditRows(rows)
+	logs, err := scanAuditRows(rows)
+	if err != nil {
+		return nil, 0, err
+	}
+	return logs, total, nil
 }
 
 func scanAuditRows(rows *sql.Rows) ([]model.AuditEvent, error) {

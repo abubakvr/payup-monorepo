@@ -48,7 +48,9 @@ services:
         condition: service_healthy
 
   audit-service:
-    build: ./services/audit
+    build:
+      context: .
+      dockerfile: services/audit/Dockerfile
     environment:
       KAFKA_BROKER: redpanda:9092
       AUDIT_DATABASE_URL: ${AUDIT_DATABASE_URL}
@@ -88,12 +90,16 @@ services:
       KAFKA_BROKER: redpanda:9092
       EMAIL_VERIFICATION_BASE_URL: ${EMAIL_VERIFICATION_BASE_URL:-}
       PASSWORD_RESET_BASE_URL: ${PASSWORD_RESET_BASE_URL:-}
+      REDIS_ADDR: redis:6379
+      USER_EXISTS_CACHE_TTL_SECONDS: ${USER_EXISTS_CACHE_TTL_SECONDS:-900}
     env_file:
       - .env
     networks:
       - payup-internal
     depends_on:
       redpanda:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       user-migrate:
         condition: service_completed_successfully
@@ -126,6 +132,7 @@ services:
       - .env
     environment:
       KAFKA_BROKER: ${KAFKA_BROKER:-redpanda:9092}
+      USER_SERVICE_GRPC_ADDR: user-service:9001
     networks:
       - payup-internal
     depends_on:
@@ -204,6 +211,73 @@ services:
         - action: rebuild
           path: ./services/notification
 
+  # Ensures admin_db and admin_service exist (idempotent). Needed when Postgres volume
+  # was created before admin was added to init.sql, so init ran only once and skipped admin.
+  admin-db-ensure:
+    image: postgres:16
+    environment:
+      PGHOST: payup-postgres2
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    volumes:
+      - ./infra/postgres/create-admin-role.sql:/create-admin-role.sql:ro
+    command: ["sh", "-c", "psql -v ON_ERROR_STOP=0 -f /create-admin-role.sql || true"]
+    networks:
+      - payup-internal
+    depends_on:
+      payup-postgres2:
+        condition: service_healthy
+    restart: "no"
+
+  admin-migrate:
+    image: migrate/migrate:v4.16.0
+    env_file:
+      - .env
+    entrypoint: ["sh", "-c"]
+    command:
+      - "migrate -path /migrations -database \"postgres://$$ADMIN_DB_USER:$$ADMIN_DB_PASSWORD@$$ADMIN_DB_HOST:$$ADMIN_DB_PORT/$$ADMIN_DB_NAME?sslmode=$$ADMIN_DB_SSLMODE\" up"
+    volumes:
+      - ./services/admin/migrations:/migrations
+    networks:
+      - payup-internal
+    depends_on:
+      admin-db-ensure:
+        condition: service_completed_successfully
+
+  admin-service:
+    build:
+      context: .
+      dockerfile: services/admin/Dockerfile
+    env_file:
+      - .env
+    environment:
+      ADMIN_SERVICE_PORT: "8005"
+      ADMIN_DATABASE_URL: ${ADMIN_DATABASE_URL}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-${JWT_SECRET}}
+      # Bootstrap super admin for admin portal
+      ADMIN_BOOTSTRAP_EMAIL: ${ADMIN_BOOTSTRAP_EMAIL}
+      ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD}
+      ADMIN_BOOTSTRAP_FIRST_NAME: ${ADMIN_BOOTSTRAP_FIRST_NAME}
+      ADMIN_BOOTSTRAP_LAST_NAME: ${ADMIN_BOOTSTRAP_LAST_NAME}
+      USER_SERVICE_GRPC_ADDR: user-service:9001
+      KYC_SERVICE_GRPC_ADDR: kyc-service:9002
+      AUDIT_SERVICE_GRPC_ADDR: audit-service:9003
+      KAFKA_BROKER: ${KAFKA_BROKER:-redpanda:9092}
+      ADMIN_PORTAL_URL: ${ADMIN_PORTAL_URL:-}
+    networks:
+      - payup-internal
+    depends_on:
+      payup-postgres2:
+        condition: service_healthy
+      admin-migrate:
+        condition: service_completed_successfully
+      redpanda:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: rebuild
+          path: ./services/admin
+
   api-gateway:
     image: nginx:alpine
     container_name: payup-api-gateway
@@ -218,6 +292,7 @@ services:
       - kyc-service
       - audit-service
       - notification-service
+      - admin-service
 
 volumes:
   redpanda_data:

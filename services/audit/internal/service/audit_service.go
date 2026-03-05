@@ -25,6 +25,14 @@ func (s *AuditService) GetAll() ([]model.AuditEvent, error) {
 	return s.repo.GetAll()
 }
 
+func (s *AuditService) GetAllPaginated(limit, offset int) ([]model.AuditEvent, int64, error) {
+	return s.repo.GetAllPaginated(limit, offset)
+}
+
 func (s *AuditService) GetByUser(userId string) ([]model.AuditEvent, error) {
 	return s.repo.GetByUser(userId)
+}
+
+func (s *AuditService) GetByUserPaginated(userId string, limit, offset int) ([]model.AuditEvent, int64, error) {
+	return s.repo.GetByUserPaginated(userId, limit, offset)
 }

@@ -325,6 +325,12 @@ func (u *S3Uploader) keyFromURL(objectURL string) (string, error) {
 // GetSelfie downloads the object at objectURL and returns decrypted body and content-type.
 // If the object was stored with client-side encryption (EncryptionKey set), it is decrypted automatically.
 func (u *S3Uploader) GetSelfie(ctx context.Context, objectURL string) ([]byte, string, error) {
+	return u.GetObjectByURL(ctx, objectURL)
+}
+
+// GetObjectByURL downloads the S3 object at objectURL and returns decrypted body and content-type.
+// Used for admin image download (identity, address verification, selfie). Decrypts when metadata indicates encryption.
+func (u *S3Uploader) GetObjectByURL(ctx context.Context, objectURL string) ([]byte, string, error) {
 	if u == nil || u.client == nil {
 		return nil, "", fmt.Errorf("s3 uploader not configured")
 	}
@@ -372,7 +378,7 @@ func (u *S3Uploader) GetSelfie(ctx context.Context, objectURL string) ([]byte, s
 	if encrypted && u.cfg.EncryptionKey != "" {
 		decrypted, err := crypto.Decrypt(body, u.cfg.EncryptionKey)
 		if err != nil {
-			return nil, "", fmt.Errorf("decrypt selfie: %w", err)
+			return nil, "", fmt.Errorf("decrypt object: %w", err)
 		}
 		body = decrypted
 	}

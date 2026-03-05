@@ -2,21 +2,29 @@ syntax = "proto3";
 
 package audit;
 
+option go_package = "github.com/abubakvr/payup-backend/services/audit/internal/grpc;auditgrpc";
+
 service AuditService {
-    rpc GetUserAudits (UserAuditRequest) returns (AuditResponse);
+  rpc GetUserAudits (UserAuditRequest) returns (AuditResponse);
+  rpc ListAllAudits (ListAllAuditsRequest) returns (AuditResponse);
 }
 
 message UserAuditRequest {
-    string user_id = 1;
+  string user_id = 1;
 }
 
+message ListAllAuditsRequest {}
+
 message AuditLog {
-    sting service = 1;
-    string action = 2;
-    string action = 3;
-    string created_at = 4;
+  string service = 1;
+  string user_id = 2;
+  string action = 3;
+  string entity = 4;
+  string entity_id = 5;
+  string metadata_json = 6;
+  string created_at = 7;
 }
 
 message AuditResponse {
-    repeated AuditLog logs = 1;
+  repeated AuditLog logs = 1;
 }

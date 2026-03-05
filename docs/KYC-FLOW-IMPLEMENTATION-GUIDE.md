@@ -329,10 +329,75 @@ All KYC paths are under `Authorization: Bearer <access_token>` and relative to b
 
 ---
 
-## 10. References
+## 10. KYC rejection – routes and flow
 
-- **HTTP examples**: `http/kyc-complete-flow.http` in this repo – run in order; set `@accessToken` after login.
+When an admin **rejects** a submitted KYC and sets a rejection message for one or more steps, the backend stores the message, resets the profile to “not submitted” / “in progress”, and sends the user an email with the message and affected steps.
+
+### 10.1 Route (admin only)
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| PUT | `/v1/admin/users/:userID/kyc/steps/:step/rejection-message` | **X-Admin-Key** | Set rejection message for a step. `:step` = `personal` \| `identity` \| `address`. |
+
+- **Body:** `{ "message": "Reason or feedback for this step" }`
+- **Response (200):** `{ "data": { "step": "personal", "message": "..." }, "message": "OK", "responseCode": "00", "status": "success" }`
+- **404:** User has no KYC profile (e.g. “KYC not started”).
+- **400:** Invalid `step` (only `personal`, `identity`, `address` allowed) or invalid body.
+
+The gateway forwards `/v1/admin/users/.../kyc/...` to the **KYC service**; use header **`X-Admin-Key`** (no JWT).
+
+### 10.2 Flow (when admin sets a rejection message)
+
+```
+Admin calls PUT .../steps/:step/rejection-message with { "message": "..." }
+         │
+         ▼
+┌────────────────────────────────────────────────────────────────────────────┐
+│ 1. KYC service: validate step (personal | identity | address)              │
+│ 2. Save message: UPDATE kyc_personal_details | kyc_identity_documents |   │
+│    kyc_address SET rejection_message = :message                            │
+└────────────────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌────────────────────────────────────────────────────────────────────────────┐
+│ 3. If profile was submitted (submitted_at IS NOT NULL):                    │
+│    • Clear submitted: submitted_at = NULL                                  │
+│    • Set status: overall_status = 'in_progress'                            │
+│    • Send email to user (see below)                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+  Response 200 { step, message }
+```
+
+### 10.3 Email to user
+
+- **When:** Only if the profile was **submitted** before this request (so we only reset and email once per “rejection”).
+- **Recipient:** User’s email from **user service** (gRPC `GetUserForKYC`).
+- **Event:** Kafka `notification-events` with `type: "kyc_rejected"`, `channel: "email"`.
+- **Content:** Subject “Your KYC application needs attention”; body lists **all steps that have a rejection message** (Personal details, Identity documents, Address) and the message for each; asks user to log in, fix those steps, and submit again.
+
+### 10.4 Where the user sees the message
+
+- **GET /v1/kyc/personal** → `data.message`
+- **GET /v1/kyc/identity** → `data.message`
+- **GET /v1/kyc/address** → `data.message`
+- **GET /v1/kyc/steps/submitted** → each step in `data.steps[]` has `message` (and `submitted` will be `false` after reset).
+
+### 10.5 Quick flow summary
+
+1. User submits KYC → `PUT /flow/status` with `overallStatus: "pending_review"` → `submitted_at` set, `overall_status` = `pending_review`.
+2. Admin reviews, rejects → **PUT /v1/admin/users/:userID/kyc/steps/:step/rejection-message** (one or more steps) with **X-Admin-Key**.
+3. Backend saves message(s); if profile was submitted, sets **submitted = false**, **overall_status = in_progress**, and sends **one email** with message and steps.
+4. User sees message in GET step responses and in email; fixes data and resubmits with **PUT /flow/status** again.
+
+---
+
+## 11. References
+
+- **HTTP examples**: `http/kyc-complete-flow.http` (user flow); `http/admin-kyc.http` (admin: full KYC, images, **rejection message**).
 - **Backend**: KYC service in `services/kyc/` – router in `internal/router/router.go`, handlers in `internal/controller/kyc_controller.go`, business logic in `internal/service/kyc_service.go`, DTOs in `internal/dto/kyc_dto.go`, models in `internal/model/kyc.go`.
 - **Step names (constants)**: `bvn`, `phone`, `nin`, `personal`, `identity`, `address`, `address_verification`, `address_geocode` (see `internal/model/kyc.go`).
+- **Admin rejection**: Section 10 above; route `PUT /v1/admin/users/:userID/kyc/steps/:step/rejection-message` (X-Admin-Key).
 
 This guide and the HTTP file together give an AI agent everything needed to implement the PayUp KYC flow correctly and handle responses (including “not started” and “submitted”) without assuming `data` is null.

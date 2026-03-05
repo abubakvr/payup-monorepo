@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/abubakvr/payup-backend/services/kyc/internal/crypto"
@@ -108,6 +109,30 @@ func (r *KYCRepository) GetProfileByUserID(userID string) (*model.KYCProfile, er
 	return &p, nil
 }
 
+// CountProfiles returns the number of KYC profiles, optionally filtered by overall_status and/or kyc_level.
+func (r *KYCRepository) CountProfiles(status string, kycLevel *int32) (int64, error) {
+	query := `SELECT COUNT(*) FROM kyc_profile WHERE 1=1`
+	args := []interface{}{}
+	pos := 1
+	if status != "" {
+		query += fmt.Sprintf(` AND overall_status = $%d`, pos)
+		args = append(args, status)
+		pos++
+	}
+	if kycLevel != nil {
+		query += fmt.Sprintf(` AND kyc_level = $%d`, pos)
+		args = append(args, *kycLevel)
+	}
+	var n int64
+	var err error
+	if len(args) == 0 {
+		err = r.db.QueryRow(query).Scan(&n)
+	} else {
+		err = r.db.QueryRow(query, args...).Scan(&n)
+	}
+	return n, err
+}
+
 func (r *KYCRepository) GetProfileByID(id string) (*model.KYCProfile, error) {
 	query := `SELECT id, user_id, kyc_level, overall_status, COALESCE(current_step, 'bvn'), submitted_at, COALESCE(steps_submitted, '{}'), created_at, updated_at
 		FROM kyc_profile WHERE id = $1`
@@ -155,11 +180,25 @@ func (r *KYCRepository) UpdateProfileStep(profileID string, currentStep string, 
 	return err
 }
 
+// ClearSubmittedAndSetInProgress clears submitted_at and sets overall_status to in_progress (e.g. when KYC is rejected).
+func (r *KYCRepository) ClearSubmittedAndSetInProgress(profileID string) error {
+	now := time.Now()
+	_, err := r.db.Exec(`UPDATE kyc_profile SET submitted_at = NULL, overall_status = 'in_progress', updated_at = $2 WHERE id = $1`, profileID, now)
+	return err
+}
+
 // MarkStepSubmitted sets the given step as submitted in profile.steps_submitted (JSONB merge).
 func (r *KYCRepository) MarkStepSubmitted(profileID string, stepName string) error {
 	merge, _ := json.Marshal(map[string]bool{stepName: true})
 	_, err := r.db.Exec(`UPDATE kyc_profile SET steps_submitted = COALESCE(steps_submitted, '{}') || $2::jsonb, updated_at = $3 WHERE id = $1`,
 		profileID, merge, time.Now())
+	return err
+}
+
+// UnmarkStepSubmitted removes the step from steps_submitted (JSONB key delete). Used when admin rejects a step.
+func (r *KYCRepository) UnmarkStepSubmitted(profileID string, stepName string) error {
+	_, err := r.db.Exec(`UPDATE kyc_profile SET steps_submitted = COALESCE(steps_submitted, '{}') - $2::text, updated_at = $3 WHERE id = $1`,
+		profileID, stepName, time.Now())
 	return err
 }
 
@@ -360,12 +399,12 @@ func (r *KYCRepository) SetPhoneVerified(profileID string, verifiedAt time.Time)
 
 // Personal details
 func (r *KYCRepository) GetPersonalByProfileID(profileID string) (*model.KYCPersonalDetails, error) {
-	query := `SELECT id, kyc_profile_id, date_of_birth, gender, pep_status, next_of_kin_name, next_of_kin_phone, created_at, updated_at
+	query := `SELECT id, kyc_profile_id, date_of_birth, gender, pep_status, next_of_kin_name, next_of_kin_phone, COALESCE(rejection_message, ''), created_at, updated_at
 		FROM kyc_personal_details WHERE kyc_profile_id = $1`
 	row := r.db.QueryRow(query, profileID)
 	var p model.KYCPersonalDetails
 	err := row.Scan(&p.ID, &p.KYCProfileID, &p.DateOfBirthEncrypted, &p.GenderEncrypted, &p.PEPStatusEncrypted,
-		&p.NextOfKinNameEncrypted, &p.NextOfKinPhoneEncrypted, &p.CreatedAt, &p.UpdatedAt)
+		&p.NextOfKinNameEncrypted, &p.NextOfKinPhoneEncrypted, &p.RejectionMessage, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -388,11 +427,11 @@ func (r *KYCRepository) UpsertPersonal(profileID string, dobEnc, genderEnc, pepE
 
 // Identity documents
 func (r *KYCRepository) GetIdentityByProfileID(profileID string) (*model.KYCIdentityDocuments, error) {
-	query := `SELECT id, kyc_profile_id, id_type, id_front_url, id_back_url, customer_image_url, signature_url, verification_status, created_at, updated_at
+	query := `SELECT id, kyc_profile_id, id_type, id_front_url, id_back_url, customer_image_url, signature_url, verification_status, COALESCE(rejection_message, ''), created_at, updated_at
 		FROM kyc_identity_documents WHERE kyc_profile_id = $1`
 	row := r.db.QueryRow(query, profileID)
 	var i model.KYCIdentityDocuments
-	err := row.Scan(&i.ID, &i.KYCProfileID, &i.IDType, &i.IDFrontURL, &i.IDBackURL, &i.CustomerImageURL, &i.SignatureURL, &i.VerificationStatus, &i.CreatedAt, &i.UpdatedAt)
+	err := row.Scan(&i.ID, &i.KYCProfileID, &i.IDType, &i.IDFrontURL, &i.IDBackURL, &i.CustomerImageURL, &i.SignatureURL, &i.VerificationStatus, &i.RejectionMessage, &i.CreatedAt, &i.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -418,11 +457,11 @@ func (r *KYCRepository) UpsertIdentity(profileID, idType, idFrontURL, idBackURL,
 
 // Address
 func (r *KYCRepository) GetAddressByProfileID(profileID string) (*model.KYCAddress, error) {
-	query := `SELECT id, kyc_profile_id, house_number, street, city, lga, state, full_address, landmark, created_at, updated_at
+	query := `SELECT id, kyc_profile_id, house_number, street, city, lga, state, full_address, landmark, COALESCE(rejection_message, ''), created_at, updated_at
 		FROM kyc_address WHERE kyc_profile_id = $1`
 	row := r.db.QueryRow(query, profileID)
 	var a model.KYCAddress
-	err := row.Scan(&a.ID, &a.KYCProfileID, &a.HouseNumberEncrypted, &a.StreetEncrypted, &a.CityEncrypted, &a.LGAEncrypted, &a.StateEncrypted, &a.FullAddressEncrypted, &a.LandmarkEncrypted, &a.CreatedAt, &a.UpdatedAt)
+	err := row.Scan(&a.ID, &a.KYCProfileID, &a.HouseNumberEncrypted, &a.StreetEncrypted, &a.CityEncrypted, &a.LGAEncrypted, &a.StateEncrypted, &a.FullAddressEncrypted, &a.LandmarkEncrypted, &a.RejectionMessage, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -445,6 +484,24 @@ func (r *KYCRepository) UpsertAddress(profileID string, houseEnc, streetEnc, cit
 			landmark = EXCLUDED.landmark, submitted_at = EXCLUDED.submitted_at, updated_at = EXCLUDED.updated_at`
 	_, err := r.db.Exec(query, uuid.New().String(), profileID, houseEnc, streetEnc, cityEnc, lgaEnc, stateEnc, fullEnc, landmarkEnc, now)
 	return err
+}
+
+// SetStepRejectionMessage sets the rejection message and clears submitted_at for a step (personal, identity, address). Used by admin when KYC is rejected.
+func (r *KYCRepository) SetStepRejectionMessage(profileID, stepName, message string) error {
+	now := time.Now()
+	switch stepName {
+	case model.StepPersonal:
+		_, err := r.db.Exec(`UPDATE kyc_personal_details SET rejection_message = $2, submitted_at = NULL, updated_at = $3 WHERE kyc_profile_id = $1`, profileID, message, now)
+		return err
+	case model.StepIdentity:
+		_, err := r.db.Exec(`UPDATE kyc_identity_documents SET rejection_message = $2, submitted_at = NULL, updated_at = $3 WHERE kyc_profile_id = $1`, profileID, message, now)
+		return err
+	case model.StepAddress:
+		_, err := r.db.Exec(`UPDATE kyc_address SET rejection_message = $2, submitted_at = NULL, updated_at = $3 WHERE kyc_profile_id = $1`, profileID, message, now)
+		return err
+	default:
+		return nil
+	}
 }
 
 // Address verification (utility bill + proof of address images)

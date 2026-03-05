@@ -23,3 +23,12 @@ GRANT ALL PRIVILEGES ON DATABASE audit_db TO audit_service;
 \c audit_db
 GRANT USAGE ON SCHEMA public TO audit_service;
 GRANT CREATE ON SCHEMA public TO audit_service;
+
+-- ADMIN SERVICE (portal: super_admin + admins, role-based)
+\c postgres
+CREATE DATABASE admin_db;
+CREATE USER admin_service WITH PASSWORD 'admin_password';
+GRANT ALL PRIVILEGES ON DATABASE admin_db TO admin_service;
+\c admin_db
+GRANT USAGE ON SCHEMA public TO admin_service;
+GRANT CREATE ON SCHEMA public TO admin_service;

@@ -20,3 +20,51 @@ message GetUserForKYCResponse {
   string first_name = 4;
   string last_name = 5;
 }
+
+// UserServiceForAdmin is used by Admin service for portal: list users, get user, set restricted.
+service UserServiceForAdmin {
+  rpc ListUsers (ListUsersRequest) returns (ListUsersResponse);
+  rpc GetUserForAdmin (GetUserForAdminRequest) returns (GetUserForAdminResponse);
+  rpc SetUserRestricted (SetUserRestrictedRequest) returns (SetUserRestrictedResponse);
+}
+
+message ListUsersRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+message ListUsersResponse {
+  repeated AdminUserSummary users = 1;
+  int32 total = 2;
+}
+
+message GetUserForAdminRequest {
+  string user_id = 1;
+}
+
+message GetUserForAdminResponse {
+  bool found = 1;
+  AdminUserSummary user = 2;
+}
+
+message AdminUserSummary {
+  string id = 1;
+  string email = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string phone_number = 5;
+  bool email_verified = 6;
+  string created_at = 7;
+  string updated_at = 8;
+  bool banking_restricted = 9;
+}
+
+message SetUserRestrictedRequest {
+  string user_id = 1;
+  bool restricted = 2;
+}
+
+message SetUserRestrictedResponse {
+  bool success = 1;
+  string message = 2;  // error message when success is false
+}

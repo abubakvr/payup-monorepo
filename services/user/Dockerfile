@@ -6,7 +6,8 @@ COPY proto /proto
 COPY services/user/go.mod services/user/go.sum ./
 RUN go mod download
 COPY services/user/ ./
-RUN go build -o user-service cmd/api/main.go
+# -p 1 reduces peak memory to avoid OOM kill in constrained Docker builds
+RUN CGO_ENABLED=0 GOOS=linux go build -p 1 -ldflags="-s -w" -o user-service cmd/api/main.go
 
 # Run stage
 FROM alpine:3.18

@@ -4,6 +4,7 @@ package main
 import (
 	"log"
 	"net"
+	"time"
 
 	"github.com/abubakvr/payup-backend/services/user/internal/config"
 	"github.com/abubakvr/payup-backend/services/user/internal/controller"
@@ -28,7 +29,8 @@ func main() {
 	tokenGen := service.NewTokenGenerator()
 	userRepo := repository.NewUserRepository(db, tokenGen)
 	producer := kafka.NewProducer([]string{cfg.KafkaBroker})
-	userSvc := service.NewUserService(userRepo, tokenGen, producer, cfg.EmailVerificationBaseURL, cfg.PasswordResetBaseURL)
+	userExistsTTL := time.Duration(cfg.UserExistsCacheTTLSeconds) * time.Second
+	userSvc := service.NewUserService(userRepo, tokenGen, producer, cfg.EmailVerificationBaseURL, cfg.PasswordResetBaseURL, userExistsTTL)
 	userCtrl := controller.NewUserController(userSvc)
 	r := router.SetupRouter(cfg, userCtrl)
 
@@ -42,6 +44,7 @@ func main() {
 		}
 		srv := grpclib.NewServer()
 		userpb.RegisterUserServiceForKYCServer(srv, grpc.NewKYCUserServer(userRepo))
+		userpb.RegisterUserServiceForAdminServer(srv, grpc.NewAdminUserServer(userRepo, userSvc))
 		log.Printf("User gRPC (KYC) listening on port %s", cfg.GrpcPort)
 		if err := srv.Serve(lis); err != nil {
 			log.Fatalf("grpc serve: %v", err)

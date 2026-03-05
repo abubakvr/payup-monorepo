@@ -5,16 +5,17 @@ import (
 )
 
 type User struct {
-	ID              string
-	Email           string
-	FirstName       string
-	LastName        string
-	PhoneNumber     string
-	PhoneNumberHash string // SHA256 hex of phone for lookup; required by DB
-	PasswordHash    string
-	EmailVerified   bool
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID                 string
+	Email              string
+	FirstName          string
+	LastName           string
+	PhoneNumber        string
+	PhoneNumberHash    string // SHA256 hex of phone for lookup; required by DB
+	PasswordHash       string
+	EmailVerified      bool
+	BankingRestricted  bool
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 type LoginRequest struct {

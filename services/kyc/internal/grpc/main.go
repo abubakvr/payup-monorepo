@@ -1,4 +1,4 @@
-package main
+package grpc
 
 import (
 	"log"
@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	kycpb "github.com/abubakvr/payup-backend/services/kyc/proto/kyc"
+	kycpb "github.com/abubakvr/payup-backend/proto/kyc"
 )
 
 func main() {

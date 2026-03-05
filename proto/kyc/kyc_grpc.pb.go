@@ -19,7 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	KYCService_GetKYCStatus_FullMethodName = "/kyc.KYCService/GetKYCStatus"
+	KYCService_GetKYCStatus_FullMethodName       = "/kyc.KYCService/GetKYCStatus"
+	KYCService_GetFullKYCForAdmin_FullMethodName = "/kyc.KYCService/GetFullKYCForAdmin"
+	KYCService_CountProfiles_FullMethodName      = "/kyc.KYCService/CountProfiles"
 )
 
 // KYCServiceClient is the client API for KYCService service.
@@ -27,6 +29,10 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type KYCServiceClient interface {
 	GetKYCStatus(ctx context.Context, in *GetKYCStatusRequest, opts ...grpc.CallOption) (*GetKYCStatusResponse, error)
+	// GetFullKYCForAdmin returns full KYC for a user as JSON (AdminKYCResponse). Used by Admin service.
+	GetFullKYCForAdmin(ctx context.Context, in *GetFullKYCForAdminRequest, opts ...grpc.CallOption) (*GetFullKYCForAdminResponse, error)
+	// CountProfiles returns the number of KYC profiles, optionally filtered by status and/or kyc_level. Used by Admin kyc-list total.
+	CountProfiles(ctx context.Context, in *CountProfilesRequest, opts ...grpc.CallOption) (*CountProfilesResponse, error)
 }
 
 type kYCServiceClient struct {
@@ -47,11 +53,35 @@ func (c *kYCServiceClient) GetKYCStatus(ctx context.Context, in *GetKYCStatusReq
 	return out, nil
 }
 
+func (c *kYCServiceClient) GetFullKYCForAdmin(ctx context.Context, in *GetFullKYCForAdminRequest, opts ...grpc.CallOption) (*GetFullKYCForAdminResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFullKYCForAdminResponse)
+	err := c.cc.Invoke(ctx, KYCService_GetFullKYCForAdmin_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kYCServiceClient) CountProfiles(ctx context.Context, in *CountProfilesRequest, opts ...grpc.CallOption) (*CountProfilesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CountProfilesResponse)
+	err := c.cc.Invoke(ctx, KYCService_CountProfiles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // KYCServiceServer is the server API for KYCService service.
 // All implementations must embed UnimplementedKYCServiceServer
 // for forward compatibility.
 type KYCServiceServer interface {
 	GetKYCStatus(context.Context, *GetKYCStatusRequest) (*GetKYCStatusResponse, error)
+	// GetFullKYCForAdmin returns full KYC for a user as JSON (AdminKYCResponse). Used by Admin service.
+	GetFullKYCForAdmin(context.Context, *GetFullKYCForAdminRequest) (*GetFullKYCForAdminResponse, error)
+	// CountProfiles returns the number of KYC profiles, optionally filtered by status and/or kyc_level. Used by Admin kyc-list total.
+	CountProfiles(context.Context, *CountProfilesRequest) (*CountProfilesResponse, error)
 	mustEmbedUnimplementedKYCServiceServer()
 }
 
@@ -64,6 +94,12 @@ type UnimplementedKYCServiceServer struct{}
 
 func (UnimplementedKYCServiceServer) GetKYCStatus(context.Context, *GetKYCStatusRequest) (*GetKYCStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetKYCStatus not implemented")
+}
+func (UnimplementedKYCServiceServer) GetFullKYCForAdmin(context.Context, *GetFullKYCForAdminRequest) (*GetFullKYCForAdminResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetFullKYCForAdmin not implemented")
+}
+func (UnimplementedKYCServiceServer) CountProfiles(context.Context, *CountProfilesRequest) (*CountProfilesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CountProfiles not implemented")
 }
 func (UnimplementedKYCServiceServer) mustEmbedUnimplementedKYCServiceServer() {}
 func (UnimplementedKYCServiceServer) testEmbeddedByValue()                    {}
@@ -104,6 +140,42 @@ func _KYCService_GetKYCStatus_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KYCService_GetFullKYCForAdmin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFullKYCForAdminRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KYCServiceServer).GetFullKYCForAdmin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KYCService_GetFullKYCForAdmin_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KYCServiceServer).GetFullKYCForAdmin(ctx, req.(*GetFullKYCForAdminRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KYCService_CountProfiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CountProfilesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KYCServiceServer).CountProfiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KYCService_CountProfiles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KYCServiceServer).CountProfiles(ctx, req.(*CountProfilesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // KYCService_ServiceDesc is the grpc.ServiceDesc for KYCService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +186,14 @@ var KYCService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetKYCStatus",
 			Handler:    _KYCService_GetKYCStatus_Handler,
+		},
+		{
+			MethodName: "GetFullKYCForAdmin",
+			Handler:    _KYCService_GetFullKYCForAdmin_Handler,
+		},
+		{
+			MethodName: "CountProfiles",
+			Handler:    _KYCService_CountProfiles_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

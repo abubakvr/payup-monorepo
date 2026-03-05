@@ -2,6 +2,8 @@ package controller
 
 import (
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -34,6 +36,8 @@ func NewUserController(svc *service.UserService) *UserController {
 }
 
 // AuthValidate is called by the API gateway (nginx auth_request) to validate the request. Returns 200 to allow, 401 to deny.
+// Flow: JWT verify → Redis cache for user exists → if not in cache, DB check. If user does not exist, return 401 to avoid
+// downstream "KYC not started" or similar; invalid/deleted user IDs get a clear 401.
 // Skips JWT validation for public routes (register, login, password reset, verify email, etc.).
 func (c *UserController) AuthValidate(ctx *gin.Context) {
 	originalURI := ctx.GetHeader("X-Original-URI")
@@ -41,8 +45,13 @@ func (c *UserController) AuthValidate(ctx *gin.Context) {
 		ctx.Status(http.StatusOK)
 		return
 	}
-	_, err := auth.DecodeJWTFromContext(ctx)
+	claims, err := auth.DecodeJWTFromContext(ctx)
 	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	exists, err := c.svc.UserExists(ctx.Request.Context(), claims.UserID)
+	if err != nil || !exists {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
@@ -78,6 +87,11 @@ func (c *UserController) RegisterUser(ctx *gin.Context) {
 
 // Login handles POST /login and returns tokens, or requires 2FA with a short-lived token.
 func (c *UserController) Login(ctx *gin.Context) {
+	clientIP := ctx.ClientIP()
+	userAgent := strings.TrimSpace(ctx.GetHeader("User-Agent"))
+	if userAgent == "" {
+		userAgent = "-"
+	}
 	var req dto.LoginRequest
 	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
 		return
@@ -86,10 +100,12 @@ func (c *UserController) Login(ctx *gin.Context) {
 	result, err := c.svc.Login(ctx.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, repository.ErrInvalidCredentials) {
+			log.Printf("user login failed email=%s ip=%s device=%s reason=invalid_credentials", req.Email, clientIP, userAgent)
 			response.AuthErrorResponse(ctx, string(response.AuthenticationFailed), "invalid email or password")
 			return
 		}
 		if errors.Is(err, service.ErrEmailNotVerified) {
+			log.Printf("user login failed email=%s ip=%s device=%s reason=email_not_verified", req.Email, clientIP, userAgent)
 			ctx.JSON(http.StatusForbidden, gin.H{
 				"status":       "error",
 				"message":      "Please verify your email before logging in",
@@ -98,6 +114,7 @@ func (c *UserController) Login(ctx *gin.Context) {
 			})
 			return
 		}
+		log.Printf("user login failed email=%s ip=%s device=%s err=%v", req.Email, clientIP, userAgent, err)
 		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
 		return
 	}
@@ -106,9 +123,11 @@ func (c *UserController) Login(ctx *gin.Context) {
 		return
 	}
 	if result.Requires2FA != nil {
+		log.Printf("user login 2fa_required email=%s ip=%s device=%s", req.Email, clientIP, userAgent)
 		ctx.JSON(http.StatusOK, result.Requires2FA)
 		return
 	}
+	log.Printf("user login success email=%s ip=%s device=%s", req.Email, clientIP, userAgent)
 	ctx.JSON(http.StatusOK, result.Success)
 }
 
@@ -311,6 +330,11 @@ func (c *UserController) VerifySetup2FA(ctx *gin.Context) {
 
 // VerifyLogin2FA handles POST /2fa/verify-login (no JWT; uses twoFactorToken from login response). Returns access and refresh tokens.
 func (c *UserController) VerifyLogin2FA(ctx *gin.Context) {
+	clientIP := ctx.ClientIP()
+	userAgent := strings.TrimSpace(ctx.GetHeader("User-Agent"))
+	if userAgent == "" {
+		userAgent = "-"
+	}
 	var req dto.VerifyLogin2FARequest
 	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
 		return
@@ -318,14 +342,17 @@ func (c *UserController) VerifyLogin2FA(ctx *gin.Context) {
 	resp, err := c.svc.VerifyLogin2FA(ctx.Request.Context(), req.TwoFactorToken, req.Code)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidTOTPCode) {
+			log.Printf("user login 2fa_verify failed ip=%s device=%s reason=invalid_code", clientIP, userAgent)
 			ctx.JSON(http.StatusBadRequest, gin.H{
 				"status": "error", "message": "Invalid or expired code", "responseCode": string(response.ValidationError),
 			})
 			return
 		}
+		log.Printf("user login 2fa_verify failed ip=%s device=%s err=%v", clientIP, userAgent, err)
 		ctx.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
+	log.Printf("user login success (2fa) ip=%s device=%s", clientIP, userAgent)
 	ctx.JSON(http.StatusOK, resp)
 }
 
@@ -355,4 +382,76 @@ func (c *UserController) Disable2FA(ctx *gin.Context) {
 		return
 	}
 	response.SuccessResponse(ctx, string(response.Success), "Two-factor authentication has been disabled.", nil)
+}
+
+// AdminListUsers handles GET /admin/users (requires X-Admin-Key). Query: limit, offset.
+func (c *UserController) AdminListUsers(ctx *gin.Context) {
+	limit := 50
+	if l := ctx.Query("limit"); l != "" {
+		if n, err := parseInt(l); err == nil && n > 0 {
+			if n > 500 {
+				n = 500
+			}
+			limit = n
+		}
+	}
+	offset := 0
+	if o := ctx.Query("offset"); o != "" {
+		if n, err := parseInt(o); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+	users, err := c.svc.ListUsers(ctx.Request.Context(), limit, offset)
+	if err != nil {
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
+		return
+	}
+	list := make([]dto.AdminUserResponse, len(users))
+	for i := range users {
+		list[i] = dto.AdminUserResponse{
+			ID:            users[i].ID,
+			Email:         users[i].Email,
+			FirstName:     users[i].FirstName,
+			LastName:      users[i].LastName,
+			PhoneNumber:   users[i].PhoneNumber,
+			EmailVerified: users[i].EmailVerified,
+			CreatedAt:     users[i].CreatedAt,
+			UpdatedAt:     users[i].UpdatedAt,
+		}
+	}
+	ctx.JSON(http.StatusOK, dto.AdminUserListResponse{Users: list, Total: len(list)})
+}
+
+// AdminGetUser handles GET /admin/users/:id (requires X-Admin-Key).
+func (c *UserController) AdminGetUser(ctx *gin.Context) {
+	id := ctx.Param("id")
+	if id == "" {
+		response.ErrorResponse(ctx, string(response.ValidationError), "user id required")
+		return
+	}
+	user, err := c.svc.GetUserForAdmin(ctx.Request.Context(), id)
+	if err != nil {
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
+		return
+	}
+	if user == nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "user not found"})
+		return
+	}
+	ctx.JSON(http.StatusOK, dto.AdminUserResponse{
+		ID:            user.ID,
+		Email:         user.Email,
+		FirstName:     user.FirstName,
+		LastName:      user.LastName,
+		PhoneNumber:   user.PhoneNumber,
+		EmailVerified: user.EmailVerified,
+		CreatedAt:     user.CreatedAt,
+		UpdatedAt:     user.UpdatedAt,
+	})
+}
+
+func parseInt(s string) (int, error) {
+	var n int
+	_, err := fmt.Sscanf(s, "%d", &n)
+	return n, err
 }

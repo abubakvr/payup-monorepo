@@ -14,6 +14,7 @@ import (
 	"github.com/abubakvr/payup-backend/services/user/internal/model"
 	passwd "github.com/abubakvr/payup-backend/services/user/internal/password"
 	"github.com/abubakvr/payup-backend/services/user/internal/repository"
+	"github.com/abubakvr/payup-backend/services/user/redis"
 	"github.com/google/uuid"
 	"github.com/pquerna/otp/totp"
 )
@@ -24,16 +25,36 @@ type UserService struct {
 	producer                 *kafka.Producer
 	emailVerificationBaseURL string
 	passwordResetBaseURL     string
+	userExistsCacheTTL       time.Duration
 }
 
-func NewUserService(userRepo *repository.UserRepository, tokenGen repository.TokenGenerator, producer *kafka.Producer, emailVerificationBaseURL, passwordResetBaseURL string) *UserService {
+func NewUserService(userRepo *repository.UserRepository, tokenGen repository.TokenGenerator, producer *kafka.Producer, emailVerificationBaseURL, passwordResetBaseURL string, userExistsCacheTTL time.Duration) *UserService {
+	if userExistsCacheTTL <= 0 {
+		userExistsCacheTTL = 15 * time.Minute
+	}
 	return &UserService{
 		userRepo:                 userRepo,
 		tokenGen:                 tokenGen,
 		producer:                 producer,
 		emailVerificationBaseURL: emailVerificationBaseURL,
 		passwordResetBaseURL:     passwordResetBaseURL,
+		userExistsCacheTTL:       userExistsCacheTTL,
 	}
+}
+
+// UserExists returns true if the user exists (Redis cache then DB). Used by auth validate to return 401 for deleted/invalid user IDs.
+func (s *UserService) UserExists(ctx context.Context, userID string) (bool, error) {
+	if exists, found := redis.GetUserExists(ctx, userID); found {
+		return exists, nil
+	}
+	exists, err := s.userRepo.ExistsByID(userID)
+	if err != nil {
+		return false, err
+	}
+	if exists {
+		redis.SetUserExists(ctx, userID, s.userExistsCacheTTL)
+	}
+	return exists, nil
 }
 
 func (s *UserService) CreateUser(ctx context.Context, email, password, firstName, lastName, phoneNumber string) (string, error) {
@@ -109,6 +130,9 @@ func (s *UserService) CreateUser(ctx context.Context, email, password, firstName
 
 	s.sendVerificationEmail(email, firstName, lastName, token)
 
+	// Warm user-exists cache so the next auth_validate (e.g. after client gets token) does not 401
+	redis.SetUserExists(ctx, userID, s.userExistsCacheTTL)
+
 	return token, nil
 }
 
@@ -158,6 +182,7 @@ func (s *UserService) Login(ctx context.Context, email, password string) (*Login
 		if err != nil {
 			return nil, err
 		}
+		redis.SetUserExists(ctx, user.ID, s.userExistsCacheTTL)
 		return &LoginResult{
 			Requires2FA: &model.LoginRequires2FAResponse{
 				RequiresTwoFactor:       true,
@@ -186,6 +211,7 @@ func (s *UserService) Login(ctx context.Context, email, password string) (*Login
 		Metadata: map[string]interface{}{"email": user.Email},
 	})
 
+	redis.SetUserExists(ctx, user.ID, s.userExistsCacheTTL)
 	return &LoginResult{
 		Success: &model.LoginResponse{
 			AccessToken:      accessToken,
@@ -278,6 +304,7 @@ func (s *UserService) VerifyLogin2FA(ctx context.Context, twoFactorToken, code s
 		UserID:   &claims.UserID,
 		Metadata: map[string]interface{}{"email": claims.Email, "2fa": true},
 	})
+	redis.SetUserExists(ctx, claims.UserID, s.userExistsCacheTTL)
 	return &model.LoginResponse{
 		AccessToken:      accessToken,
 		RefreshToken:     refreshToken,
@@ -303,6 +330,67 @@ func (s *UserService) Disable2FA(ctx context.Context, userID string, password st
 		return Err2FANotEnabled
 	}
 	return s.userRepo.DisableTotp(userID)
+}
+
+// ListUsers returns users for admin (paginated). Excludes password.
+func (s *UserService) ListUsers(ctx context.Context, limit, offset int) ([]model.User, error) {
+	return s.userRepo.ListUsers(limit, offset)
+}
+
+// GetUserForAdmin returns a single user for admin (no password). Returns nil if not found.
+func (s *UserService) GetUserForAdmin(ctx context.Context, userID string) (*model.User, error) {
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil || user == nil {
+		return nil, err
+	}
+	// Don't expose password
+	user.PasswordHash = ""
+	return user, nil
+}
+
+// SetUserRestricted sets the user's banking_restricted flag (admin only). Sends audit event and notification email when restricting.
+func (s *UserService) SetUserRestricted(ctx context.Context, userID string, restricted bool) error {
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return repository.ErrUserNotFound
+	}
+	if err := s.userRepo.SetBankingRestricted(userID, restricted); err != nil {
+		return err
+	}
+	// Audit log
+	_ = s.producer.SendAuditLog(kafka.AuditLogParams{
+		Service:  "user",
+		Action:   "user_restricted",
+		Entity:   "user",
+		EntityID: userID,
+		UserID:   &userID,
+		Metadata: map[string]interface{}{"restricted": restricted, "email": user.Email},
+	})
+	// Notify user by email when restricting (not when unrestricting)
+	if restricted {
+		toName := strings.TrimSpace(user.FirstName + " " + user.LastName)
+		if toName == "" {
+			toName = user.Email
+		}
+		subject := "Account restriction notice"
+		body := "Your account has been restricted from certain banking activities. If you have questions, please contact support."
+		html := `<p>Your account has been restricted from certain banking activities.</p><p>If you have questions, please contact support.</p>`
+		_ = s.producer.SendNotification(kafka.NotificationEvent{
+			Type:    "user_restricted",
+			Channel: "email",
+			Metadata: map[string]interface{}{
+				"to":      user.Email,
+				"to_name": toName,
+				"subject": subject,
+				"body":    body,
+				"html":    html,
+			},
+		})
+	}
+	return nil
 }
 
 func (s *UserService) VerifyEmail(ctx context.Context, token string) error {
@@ -483,18 +571,12 @@ func (s *UserService) sendVerificationEmail(to, firstName, lastName, token strin
 		log.Printf("user service: sendVerificationEmail skipped (producer is nil)")
 		return
 	}
-	link := s.emailVerificationBaseURL
-	if link != "" && token != "" {
-		if len(link) > 0 && (link[len(link)-1] == '?' || link[len(link)-1] == '&') {
-			link += "token=" + token
-		} else {
-			if strings.Contains(link, "?") {
-				link += "&token=" + token
-			} else {
-				link += "?token=" + token
-			}
-		}
-	} else if link == "" {
+	// Link format: {{baseUrl}}/verify-email?token=<token>
+	baseURL := strings.TrimSuffix(s.emailVerificationBaseURL, "/")
+	var link string
+	if baseURL != "" && token != "" {
+		link = baseURL + "/verify-email?token=" + token
+	} else if baseURL == "" {
 		link = "(set EMAIL_VERIFICATION_BASE_URL to enable link)"
 	}
 	fullName := firstName

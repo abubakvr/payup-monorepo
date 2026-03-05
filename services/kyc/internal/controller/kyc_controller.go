@@ -430,10 +430,7 @@ func (c *KYCController) GetAddressGeolocation(ctx *gin.Context) {
 	if c.handleKYCError(ctx, err) {
 		return
 	}
-	if data == nil {
-		response.SuccessResponse(ctx, "OK", nil)
-		return
-	}
+	// data is always non-nil: full ReverseGeocodeData shape with address fields when present, or empty (0/"") when none
 	response.SuccessResponse(ctx, "OK", data)
 }
 
@@ -525,4 +522,73 @@ func (c *KYCController) UploadAddressVerificationImage(ctx *gin.Context) {
 		resp.Data = *verifData
 	}
 	response.SuccessResponse(ctx, "Image uploaded", resp)
+}
+
+// AdminGetUserKYC GET /admin/users/:userID/kyc — full KYC data for user (requires X-Admin-Key).
+func (c *KYCController) AdminGetUserKYC(ctx *gin.Context) {
+	userID := ctx.Param("userID")
+	if userID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "userID required"})
+		return
+	}
+	data, err := c.svc.GetFullKYCByUserID(userID)
+	if c.handleKYCError(ctx, err) {
+		return
+	}
+	ctx.JSON(http.StatusOK, data)
+}
+
+// AdminDownloadImage GET /admin/users/:userID/kyc/images/:type — returns decrypted image bytes (requires X-Admin-Key). type: id_front, id_back, customer_image, signature, utility_bill, proof_of_address.
+func (c *KYCController) AdminDownloadImage(ctx *gin.Context) {
+	userID := ctx.Param("userID")
+	imageType := ctx.Param("type")
+	if userID == "" || imageType == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "userID and type required"})
+		return
+	}
+	body, contentType, err := c.svc.GetDecryptedImage(ctx.Request.Context(), userID, imageType)
+	if err != nil {
+		if err == service.ErrKYCNotStarted {
+			ctx.JSON(http.StatusNotFound, gin.H{"status": "error", "message": err.Error()})
+			return
+		}
+		response.ErrorResponse(ctx, response.ValidationError, err.Error())
+		return
+	}
+	disposition := "inline"
+	if ctx.Query("download") == "1" {
+		disposition = "attachment"
+	}
+	fileName := imageType + ".jpg"
+	if contentType == "image/png" {
+		fileName = imageType + ".png"
+	}
+	ctx.Header("Content-Disposition", disposition+"; filename=\""+fileName+"\"")
+	ctx.Data(http.StatusOK, contentType, body)
+}
+
+// AdminSetStepRejectionMessage PUT /admin/users/:userID/kyc/steps/:step/rejection-message — set rejection message for a step (X-Admin-Key). Body: { "message": "..." }. Step: personal | identity | address.
+func (c *KYCController) AdminSetStepRejectionMessage(ctx *gin.Context) {
+	userID := ctx.Param("userID")
+	step := ctx.Param("step")
+	if userID == "" || step == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "userID and step required"})
+		return
+	}
+	var body struct {
+		Message string `json:"message"`
+	}
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "invalid body; need { \"message\": \"...\" }"})
+		return
+	}
+	if err := c.svc.SetStepRejectionMessage(userID, step, body.Message); err != nil {
+		if err == service.ErrKYCNotStarted {
+			ctx.JSON(http.StatusNotFound, gin.H{"status": "error", "message": err.Error()})
+			return
+		}
+		response.ErrorResponse(ctx, response.ValidationError, err.Error())
+		return
+	}
+	response.SuccessResponse(ctx, "OK", gin.H{"step": step, "message": body.Message})
 }

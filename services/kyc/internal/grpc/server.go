@@ -1,9 +1,9 @@
-package main
+package grpc
 
 import (
 	"context"
 
-	kycpb "github.com/abubakvr/payup-backend/services/kyc/proto/kyc"
+	kycpb "github.com/abubakvr/payup-backend/proto/kyc"
 )
 
 type Server struct {

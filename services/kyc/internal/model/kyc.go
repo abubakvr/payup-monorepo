@@ -73,6 +73,7 @@ type KYCPersonalDetails struct {
 	PEPStatusEncrypted []byte
 	NextOfKinNameEncrypted []byte
 	NextOfKinPhoneEncrypted []byte
+	RejectionMessage  string // set by admin when KYC/step is rejected
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }
@@ -87,6 +88,7 @@ type KYCIdentityDocuments struct {
 	CustomerImageURL   string
 	SignatureURL      string
 	VerificationStatus string
+	RejectionMessage  string // set by admin when KYC/step is rejected
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }
@@ -102,6 +104,7 @@ type KYCAddress struct {
 	StateEncrypted       []byte
 	FullAddressEncrypted []byte
 	LandmarkEncrypted    []byte
+	RejectionMessage     string // set by admin when KYC/step is rejected
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 }

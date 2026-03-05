@@ -10,6 +10,7 @@ import (
 
 type Config struct {
 	Port        string
+	GrpcPort    string
 	DatabaseURL string
 }
 
@@ -18,6 +19,10 @@ func LoadConfig() *Config {
 	if port == "" {
 		port = "8003"
 	}
+	grpcPort := os.Getenv("AUDIT_GRPC_PORT")
+	if grpcPort == "" {
+		grpcPort = "9003"
+	}
 	dbURL := os.Getenv("AUDIT_DATABASE_URL")
 	if dbURL == "" {
 		dbURL = "postgres://postgres:postgres@localhost:5432/audit_db?sslmode=disable"
@@ -25,6 +30,7 @@ func LoadConfig() *Config {
 
 	return &Config{
 		Port:        port,
+		GrpcPort:    grpcPort,
 		DatabaseURL: dbURL,
 	}
 }

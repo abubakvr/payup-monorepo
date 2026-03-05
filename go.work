@@ -1,0 +1,10 @@
+go 1.25.0
+
+use (
+	./proto
+	./services/admin
+	./services/audit
+	./services/kyc
+	./services/notification
+	./services/user
+)
