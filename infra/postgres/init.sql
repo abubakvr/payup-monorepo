@@ -1,6 +1,6 @@
 -- USER SERVICE
 CREATE DATABASE user_db;
-CREATE USER user_service WITH PASSWORD 'user_password';
+CREATE USER user_service WITH PASSWORD :'user_password';
 GRANT ALL PRIVILEGES ON DATABASE user_db TO user_service;
 \c user_db
 GRANT USAGE ON SCHEMA public TO user_service;
@@ -9,7 +9,7 @@ GRANT CREATE ON SCHEMA public TO user_service;
 -- KYC SERVICE (reconnect to postgres to create next db)
 \c postgres
 CREATE DATABASE kyc_db;
-CREATE USER kyc_service WITH PASSWORD 'kyc_password';
+CREATE USER kyc_service WITH PASSWORD :'kyc_password';
 GRANT ALL PRIVILEGES ON DATABASE kyc_db TO kyc_service;
 \c kyc_db
 GRANT USAGE ON SCHEMA public TO kyc_service;
@@ -18,17 +18,17 @@ GRANT CREATE ON SCHEMA public TO kyc_service;
 -- AUDIT SERVICE
 \c postgres
 CREATE DATABASE audit_db;
-CREATE USER audit_service WITH PASSWORD 'audit_password';
+CREATE USER audit_service WITH PASSWORD :'audit_password';
 GRANT ALL PRIVILEGES ON DATABASE audit_db TO audit_service;
 \c audit_db
 GRANT USAGE ON SCHEMA public TO audit_service;
 GRANT CREATE ON SCHEMA public TO audit_service;
 
--- ADMIN SERVICE (portal: super_admin + admins, role-based)
 \c postgres
 CREATE DATABASE admin_db;
-CREATE USER admin_service WITH PASSWORD 'admin_password';
+CREATE USER admin_service WITH PASSWORD :'admin_password';
 GRANT ALL PRIVILEGES ON DATABASE admin_db TO admin_service;
 \c admin_db
 GRANT USAGE ON SCHEMA public TO admin_service;
 GRANT CREATE ON SCHEMA public TO admin_service;
+

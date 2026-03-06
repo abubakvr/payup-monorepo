@@ -5,6 +5,11 @@ services:
     container_name: payup-postgres2
     env_file:
       - infra/postgres/postgres.env
+    environment:
+      USER_DB_PASSWORD: ${USER_DB_PASSWORD}
+      KYC_DB_PASSWORD: ${KYC_DB_PASSWORD}
+      AUDIT_DB_PASSWORD: ${AUDIT_DB_PASSWORD}
+      ADMIN_DB_PASSWORD: ${ADMIN_DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -219,9 +224,10 @@ services:
       PGHOST: payup-postgres2
       PGUSER: postgres
       PGPASSWORD: postgres
+      ADMIN_DB_PASSWORD: ${ADMIN_DB_PASSWORD}
     volumes:
       - ./infra/postgres/create-admin-role.sql:/create-admin-role.sql:ro
-    command: ["sh", "-c", "psql -v ON_ERROR_STOP=0 -f /create-admin-role.sql || true"]
+    command: ["sh", "-c", "psql -v ON_ERROR_STOP=0 -v admin_password=\"$ADMIN_DB_PASSWORD\" -f /create-admin-role.sql || true"]
     networks:
       - payup-internal
     depends_on:

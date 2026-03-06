@@ -6,7 +6,7 @@
 
 \c postgres
 CREATE DATABASE admin_db;
-CREATE USER admin_service WITH PASSWORD 'admin_password';
+CREATE USER admin_service WITH PASSWORD :'admin_password';
 GRANT ALL PRIVILEGES ON DATABASE admin_db TO admin_service;
 \c admin_db
 GRANT USAGE ON SCHEMA public TO admin_service;
