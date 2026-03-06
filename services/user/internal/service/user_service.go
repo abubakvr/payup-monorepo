@@ -647,6 +647,7 @@ func (s *UserService) GetSettings(ctx context.Context, userID string) (*dto.Sett
 }
 
 // UpdateSettings applies a partial update to the user's settings. Only non-nil fields in req are updated. Creates default settings if missing.
+// When updating any field other than theme or language, password is required and verified.
 func (s *UserService) UpdateSettings(ctx context.Context, userID string, req *dto.UpdateSettingsRequest) (*dto.SettingsResponse, error) {
 	current, err := s.userRepo.GetOrCreateUserSettings(userID)
 	if err != nil {
@@ -655,10 +656,26 @@ func (s *UserService) UpdateSettings(ctx context.Context, userID string, req *dt
 	if current == nil {
 		return nil, errors.New("user settings not found")
 	}
-	// Merge: only update fields that were sent (non-nil in req).
-	if req.PinHash != nil {
-		current.PinHash = req.PinHash
+	// Protected fields (require password): anything other than theme and language.
+	updatingProtected := req.BiometricEnabled != nil || req.TwoFactorEnabled != nil ||
+		req.DailyTransferLimit != nil || req.MonthlyTransferLimit != nil ||
+		req.TransactionAlertsEnabled != nil || req.TransfersDisabled != nil
+	if updatingProtected {
+		if req.Password == nil || *req.Password == "" {
+			return nil, errors.New("password required to update these settings")
+		}
+		user, err := s.userRepo.GetUserByID(userID)
+		if err != nil {
+			return nil, err
+		}
+		if user == nil {
+			return nil, errors.New("user not found")
+		}
+		if !passwd.CheckPassword(*req.Password, user.PasswordHash) {
+			return nil, errors.New("invalid password")
+		}
 	}
+	// Merge: only update fields that were sent (non-nil in req). PIN is set only via PUT /settings/pin.
 	if req.BiometricEnabled != nil {
 		current.BiometricEnabled = *req.BiometricEnabled
 	}
@@ -680,6 +697,117 @@ func (s *UserService) UpdateSettings(ctx context.Context, userID string, req *dt
 	if req.Theme != nil {
 		current.Theme = req.Theme
 	}
+	if req.TransfersDisabled != nil {
+		current.TransfersDisabled = *req.TransfersDisabled
+	}
+	current.UpdatedAt = time.Now()
+	if err := s.userRepo.UpdateUserSettings(current); err != nil {
+		return nil, err
+	}
+	return toSettingsResponse(current), nil
+}
+
+// SetPin sets or updates the user's PIN (4 digits). Requires password; when user already has a PIN, currentPin is required and must match. Hashed server-side; never stored plain.
+func (s *UserService) SetPin(ctx context.Context, userID string, password string, currentPin *string, pin string) (*dto.SettingsResponse, error) {
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+	if !passwd.CheckPassword(password, user.PasswordHash) {
+		return nil, errors.New("invalid password")
+	}
+	settings, err := s.userRepo.GetOrCreateUserSettings(userID)
+	if err != nil {
+		return nil, err
+	}
+	if settings == nil {
+		return nil, errors.New("user settings not found")
+	}
+	// When updating an existing PIN, require and verify current PIN.
+	if settings.PinHash != nil && *settings.PinHash != "" {
+		if currentPin == nil || *currentPin == "" {
+			return nil, errors.New("current PIN required to change PIN")
+		}
+		if !passwd.CheckPassword(*currentPin, *settings.PinHash) {
+			return nil, errors.New("invalid current PIN")
+		}
+	}
+	hash, err := passwd.HashPassword(pin)
+	if err != nil {
+		return nil, err
+	}
+	settings.PinHash = &hash
+	settings.UpdatedAt = time.Now()
+	if err := s.userRepo.UpdateUserSettings(settings); err != nil {
+		return nil, err
+	}
+	return toSettingsResponse(settings), nil
+}
+
+// SetLimits updates daily and/or monthly transfer limits for the user. Requires password.
+func (s *UserService) SetLimits(ctx context.Context, userID string, req *dto.SetLimitsRequest) (*dto.SettingsResponse, error) {
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+	if !passwd.CheckPassword(req.Password, user.PasswordHash) {
+		return nil, errors.New("invalid password")
+	}
+	current, err := s.userRepo.GetOrCreateUserSettings(userID)
+	if err != nil {
+		return nil, err
+	}
+	if current == nil {
+		return nil, errors.New("user settings not found")
+	}
+	if req.DailyTransferLimit != nil {
+		current.DailyTransferLimit = req.DailyTransferLimit
+	}
+	if req.MonthlyTransferLimit != nil {
+		current.MonthlyTransferLimit = req.MonthlyTransferLimit
+	}
+	current.UpdatedAt = time.Now()
+	if err := s.userRepo.UpdateUserSettings(current); err != nil {
+		return nil, err
+	}
+	return toSettingsResponse(current), nil
+}
+
+// PauseAccount sets transfers_disabled = true (disables transfers). Requires password.
+func (s *UserService) PauseAccount(ctx context.Context, userID string, password string) (*dto.SettingsResponse, error) {
+	return s.setTransfersDisabled(ctx, userID, password, true)
+}
+
+// ResumeAccount sets transfers_disabled = false (re-enables transfers). Requires password.
+func (s *UserService) ResumeAccount(ctx context.Context, userID string, password string) (*dto.SettingsResponse, error) {
+	return s.setTransfersDisabled(ctx, userID, password, false)
+}
+
+func (s *UserService) setTransfersDisabled(ctx context.Context, userID string, password string, disabled bool) (*dto.SettingsResponse, error) {
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+	if !passwd.CheckPassword(password, user.PasswordHash) {
+		return nil, errors.New("invalid password")
+	}
+	current, err := s.userRepo.GetOrCreateUserSettings(userID)
+	if err != nil {
+		return nil, err
+	}
+	if current == nil {
+		return nil, errors.New("user settings not found")
+	}
+	current.TransfersDisabled = disabled
 	current.UpdatedAt = time.Now()
 	if err := s.userRepo.UpdateUserSettings(current); err != nil {
 		return nil, err
@@ -690,12 +818,13 @@ func (s *UserService) UpdateSettings(ctx context.Context, userID string, req *dt
 func toSettingsResponse(s *model.UserSettings) *dto.SettingsResponse {
 	resp := &dto.SettingsResponse{
 		UserID:                   s.UserID,
-		PinHash:                  s.PinHash,
+		PinSet:                   s.PinHash != nil && *s.PinHash != "",
 		BiometricEnabled:         s.BiometricEnabled,
 		TwoFactorEnabled:         s.TwoFactorEnabled,
 		DailyTransferLimit:       s.DailyTransferLimit,
 		MonthlyTransferLimit:     s.MonthlyTransferLimit,
 		TransactionAlertsEnabled: s.TransactionAlertsEnabled,
+		TransfersDisabled:        s.TransfersDisabled,
 		Language:                 s.Language,
 		Theme:                    s.Theme,
 		CreatedAt:                s.CreatedAt.Format(time.RFC3339),

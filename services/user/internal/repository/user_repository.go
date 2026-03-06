@@ -70,7 +70,7 @@ func (r *UserRepository) GetUserSettings(userID string) (*model.UserSettings, er
 		SELECT user_id, pin_hash, biometric_enabled, two_factor_enabled,
 		       totp_secret, totp_secret_pending, totp_pending_created_at,
 		       daily_transfer_limit, monthly_transfer_limit, transaction_alerts_enabled,
-		       language, theme, created_at, updated_at
+		transfers_disabled, language, theme, created_at, updated_at
 		FROM user_settings WHERE user_id = $1
 	`
 	row := r.db.QueryRow(query, userID)
@@ -81,7 +81,7 @@ func (r *UserRepository) GetUserSettings(userID string) (*model.UserSettings, er
 	err := row.Scan(&s.UserID, &pinHash, &s.BiometricEnabled, &s.TwoFactorEnabled,
 		&totpSecret, &totpPending, &totpPendingAt,
 		&dailyLimit, &monthlyLimit, &s.TransactionAlertsEnabled,
-		&language, &theme, &s.CreatedAt, &s.UpdatedAt)
+		&s.TransfersDisabled, &language, &theme, &s.CreatedAt, &s.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -121,7 +121,7 @@ func (r *UserRepository) UpdateUserSettings(s *model.UserSettings) error {
 		UPDATE user_settings SET
 			pin_hash = $2, biometric_enabled = $3, two_factor_enabled = $4,
 			daily_transfer_limit = $5, monthly_transfer_limit = $6,
-			transaction_alerts_enabled = $7, language = $8, theme = $9, updated_at = $10
+			transaction_alerts_enabled = $7, transfers_disabled = $8, language = $9, theme = $10, updated_at = $11
 		WHERE user_id = $1
 	`
 	pinHash := sql.NullString{}
@@ -145,7 +145,7 @@ func (r *UserRepository) UpdateUserSettings(s *model.UserSettings) error {
 		monthlyLimit = sql.NullFloat64{Float64: *s.MonthlyTransferLimit, Valid: true}
 	}
 	result, err := r.db.Exec(query, s.UserID, pinHash, s.BiometricEnabled, s.TwoFactorEnabled,
-		dailyLimit, monthlyLimit, s.TransactionAlertsEnabled,
+		dailyLimit, monthlyLimit, s.TransactionAlertsEnabled, s.TransfersDisabled,
 		language, theme, s.UpdatedAt)
 	if err != nil {
 		return err

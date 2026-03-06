@@ -78,6 +78,7 @@ type UserSettings struct {
 	DailyTransferLimit       *float64
 	MonthlyTransferLimit     *float64
 	TransactionAlertsEnabled bool
+	TransfersDisabled        bool // pause account: when true, transfers are disabled
 	Language                 *string
 	Theme                    *string
 	CreatedAt                time.Time

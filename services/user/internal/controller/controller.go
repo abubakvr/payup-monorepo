@@ -40,6 +40,14 @@ func NewUserController(svc *service.UserService) *UserController {
 // downstream "KYC not started" or similar; invalid/deleted user IDs get a clear 401.
 // Skips JWT validation for public routes (register, login, password reset, verify email, etc.).
 func (c *UserController) AuthValidate(ctx *gin.Context) {
+	// Never let panics bubble up to the gateway as 500; treat them as auth failure (401).
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("AuthValidate panic recovered: %v", r)
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+		}
+	}()
+
 	originalURI := ctx.GetHeader("X-Original-URI")
 	if isPublicPath(originalURI) {
 		ctx.Status(http.StatusOK)
@@ -256,7 +264,7 @@ func (c *UserController) GetSettings(ctx *gin.Context) {
 	response.SuccessResponse(ctx, string(response.Success), "Settings retrieved.", settings)
 }
 
-// UpdateSettings applies a partial update to the authenticated user's settings (PATCH /settings). Requires JWT.
+// UpdateSettings applies a partial update (PATCH /settings). Theme and language only do not require password; other fields require password.
 func (c *UserController) UpdateSettings(ctx *gin.Context) {
 	claims, err := auth.DecodeJWTFromContext(ctx)
 	if err != nil {
@@ -269,14 +277,142 @@ func (c *UserController) UpdateSettings(ctx *gin.Context) {
 	}
 	settings, err := c.svc.UpdateSettings(ctx.Request.Context(), claims.UserID, &req)
 	if err != nil {
-		if err.Error() == "user settings not found" {
+		if err.Error() == "user settings not found" || err.Error() == "user not found" {
 			ctx.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+		if err.Error() == "password required to update these settings" {
+			response.ErrorResponse(ctx, string(response.ValidationError), "Password is required to update these settings")
+			return
+		}
+		if err.Error() == "invalid password" {
+			response.ErrorResponse(ctx, string(response.AuthenticationFailed), "Invalid password")
 			return
 		}
 		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
 		return
 	}
 	response.SuccessResponse(ctx, string(response.Success), "Settings updated.", settings)
+}
+
+// SetPin handles PUT /settings/pin (authenticated). Body: { "password", "currentPin" (required when changing), "pin" }. Requires password; when changing PIN, currentPin required; pin exactly 4 digits; hashed server-side.
+func (c *UserController) SetPin(ctx *gin.Context) {
+	claims, err := auth.DecodeJWTFromContext(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	var req dto.SetPinRequest
+	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
+		return
+	}
+	settings, err := c.svc.SetPin(ctx.Request.Context(), claims.UserID, req.Password, req.CurrentPin, req.Pin)
+	if err != nil {
+		if err.Error() == "user not found" || err.Error() == "user settings not found" {
+			ctx.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+		if err.Error() == "invalid password" {
+			response.ErrorResponse(ctx, string(response.AuthenticationFailed), "Invalid password")
+			return
+		}
+		if err.Error() == "current PIN required to change PIN" {
+			response.ErrorResponse(ctx, string(response.ValidationError), "Current PIN is required to change your PIN")
+			return
+		}
+		if err.Error() == "invalid current PIN" {
+			response.ErrorResponse(ctx, string(response.AuthenticationFailed), "Invalid current PIN")
+			return
+		}
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
+		return
+	}
+	response.SuccessResponse(ctx, string(response.Success), "PIN set.", settings)
+}
+
+// SetLimits handles PUT /settings/limits (authenticated). Body: { "password", "dailyTransferLimit", "monthlyTransferLimit" }. Requires password.
+func (c *UserController) SetLimits(ctx *gin.Context) {
+	claims, err := auth.DecodeJWTFromContext(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	var req dto.SetLimitsRequest
+	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
+		return
+	}
+	if req.DailyTransferLimit == nil && req.MonthlyTransferLimit == nil {
+		response.ErrorResponse(ctx, string(response.ValidationError), "provide at least one of dailyTransferLimit or monthlyTransferLimit")
+		return
+	}
+	settings, err := c.svc.SetLimits(ctx.Request.Context(), claims.UserID, &req)
+	if err != nil {
+		if err.Error() == "user not found" || err.Error() == "user settings not found" {
+			ctx.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+		if err.Error() == "invalid password" {
+			response.ErrorResponse(ctx, string(response.AuthenticationFailed), "Invalid password")
+			return
+		}
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
+		return
+	}
+	response.SuccessResponse(ctx, string(response.Success), "Limits updated.", settings)
+}
+
+// PauseAccount handles POST /settings/pause-account (authenticated). Body: { "password" }. Disables transfers.
+func (c *UserController) PauseAccount(ctx *gin.Context) {
+	claims, err := auth.DecodeJWTFromContext(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	var req dto.PasswordConfirmRequest
+	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
+		return
+	}
+	settings, err := c.svc.PauseAccount(ctx.Request.Context(), claims.UserID, req.Password)
+	if err != nil {
+		if err.Error() == "user not found" || err.Error() == "user settings not found" {
+			ctx.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+		if err.Error() == "invalid password" {
+			response.ErrorResponse(ctx, string(response.AuthenticationFailed), "Invalid password")
+			return
+		}
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
+		return
+	}
+	response.SuccessResponse(ctx, string(response.Success), "Account paused; transfers disabled.", settings)
+}
+
+// ResumeAccount handles POST /settings/resume-account (authenticated). Body: { "password" }. Re-enables transfers.
+func (c *UserController) ResumeAccount(ctx *gin.Context) {
+	claims, err := auth.DecodeJWTFromContext(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	var req dto.PasswordConfirmRequest
+	if !validation.BindAndValidate(ctx, string(response.ValidationError), &req) {
+		return
+	}
+	settings, err := c.svc.ResumeAccount(ctx.Request.Context(), claims.UserID, req.Password)
+	if err != nil {
+		if err.Error() == "user not found" || err.Error() == "user settings not found" {
+			ctx.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+		if err.Error() == "invalid password" {
+			response.ErrorResponse(ctx, string(response.AuthenticationFailed), "Invalid password")
+			return
+		}
+		response.ErrorResponse(ctx, string(response.InternalServerError), err.Error())
+		return
+	}
+	response.SuccessResponse(ctx, string(response.Success), "Account resumed; transfers enabled.", settings)
 }
 
 // Setup2FA handles POST /2fa/setup (authenticated). Returns TOTP secret and QR URL for authenticator app.

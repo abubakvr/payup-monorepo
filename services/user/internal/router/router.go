@@ -40,9 +40,13 @@ func SetupRouter(cfg *config.Config, ctrl *controller.UserController) *gin.Engin
 	router.POST("/reset-password", ctrl.ResetPassword)
 	router.POST("/change-password", ctrl.ChangePassword)
 
-	// User settings: GET (read) and PATCH (partial update). Settings row is created on registration; no separate create route.
+	// User settings: GET (read), PATCH (partial update), and dedicated routes for pin, limits, pause/resume.
 	router.GET("/settings", ctrl.GetSettings)
 	router.PATCH("/settings", ctrl.UpdateSettings)
+	router.PUT("/settings/pin", ctrl.SetPin)
+	router.PUT("/settings/limits", ctrl.SetLimits)
+	router.POST("/settings/pause-account", ctrl.PauseAccount)
+	router.POST("/settings/resume-account", ctrl.ResumeAccount)
 
 	// Two-factor auth (TOTP): setup and verify-setup require JWT; verify-login is public (uses token from login response).
 	router.POST("/2fa/setup", ctrl.Setup2FA)
