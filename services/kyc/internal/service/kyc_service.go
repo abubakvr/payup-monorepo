@@ -1100,7 +1100,7 @@ func (s *KYCService) uploadAddressVerificationSync(ctx context.Context, userID, 
 	return newURL, nil
 }
 
-// GetAddressVerification returns utility bill and proof-of-address URLs and verification status for the authenticated user.
+// GetAddressVerification returns utility bill and proof-of-address URLs, GPS, reversed address, and verification status for the authenticated user.
 func (s *KYCService) GetAddressVerification(userID string) (*dto.AddressVerificationResponse, error) {
 	p, err := s.getProfile(userID)
 	if err != nil || p == nil {
@@ -1115,12 +1115,53 @@ func (s *KYCService) GetAddressVerification(userID string) (*dto.AddressVerifica
 	if status == "" {
 		status = "unverified"
 	}
+	reversedGeo := ""
+	if len(det.ReversedGeoAddressEncrypted) > 0 {
+		reversedGeo, _ = s.repo.Decrypt(det.ReversedGeoAddressEncrypted)
+	}
 	return &dto.AddressVerificationResponse{
-		UtilityBillURL:     det.UtilityBillURL,
-		ProofOfAddressURL:  det.StreetImageURL,
-		VerificationStatus: status,
-		Submitted:          submitted,
+		UtilityBillURL:      det.UtilityBillURL,
+		ProofOfAddressURL:   det.StreetImageURL,
+		GPSLatitude:         det.GPSLatitude,
+		GPSLongitude:        det.GPSLongitude,
+		ReversedGeoAddress:  reversedGeo,
+		VerificationStatus:  status,
+		Submitted:           submitted,
 	}, nil
+}
+
+// SubmitAddressVerificationLocation accepts lat/lon (and optional accuracy), calls Geoapify reverse geocode, and saves GPS + reversed address into kyc_address_verification so GET /address/verification returns them.
+func (s *KYCService) SubmitAddressVerificationLocation(userID string, req *dto.SubmitAddressVerificationLocationRequest) (*dto.AddressVerificationResponse, error) {
+	p, err := s.getProfile(userID)
+	if err != nil || p == nil {
+		return nil, err
+	}
+	geoResp, err := geoapify.ReverseGeocode(req.Latitude, req.Longitude)
+	if err != nil {
+		if err == geoapify.ErrAPIKeyMissing {
+			return nil, errors.New("reverse geocoding not configured (GEOAPIFY_API_KEY missing)")
+		}
+		if err == geoapify.ErrNoAddressFound {
+			return nil, errors.New("no address found for the provided coordinates")
+		}
+		return nil, err
+	}
+	feat := geoResp.Features[0]
+	formatted := feat.Properties.Formatted
+	if formatted == "" {
+		formatted = feat.Properties.AddressLine1
+	}
+	if formatted == "" {
+		formatted = fmt.Sprintf("%s, %s", feat.Properties.City, feat.Properties.State)
+	}
+	encrypted, err := s.repo.Encrypt(formatted)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.UpsertAddressVerificationLocation(p.ID, req.Latitude, req.Longitude, encrypted); err != nil {
+		return nil, err
+	}
+	return s.GetAddressVerification(userID)
 }
 
 // ReverseGeocode accepts lat/lon (and optional accuracy) from the frontend, calls Geoapify, and stores the result in kyc_address_geolocations.

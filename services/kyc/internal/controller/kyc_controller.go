@@ -453,13 +453,30 @@ func (c *KYCController) ReverseGeocode(ctx *gin.Context) {
 	response.SuccessResponse(ctx, "OK", data)
 }
 
-// GetAddressVerification GET /address/verification — returns utility bill URL, proof-of-address URL, verification status.
+// GetAddressVerification GET /address/verification — returns utility bill URL, proof-of-address URL, GPS, reversed address, verification status.
 func (c *KYCController) GetAddressVerification(ctx *gin.Context) {
 	userID, ok := c.withUserID(ctx)
 	if !ok {
 		return
 	}
 	data, err := c.svc.GetAddressVerification(userID)
+	if c.handleKYCError(ctx, err) {
+		return
+	}
+	response.SuccessResponse(ctx, "OK", data)
+}
+
+// SubmitAddressVerificationLocation POST /address/verification/location — submit latitude, longitude (and optional accuracy); reverse geocode is fetched from Geoapify and saved so GET /address/verification returns gpsLatitude, gpsLongitude, reversedGeoAddress.
+func (c *KYCController) SubmitAddressVerificationLocation(ctx *gin.Context) {
+	userID, ok := c.withUserID(ctx)
+	if !ok {
+		return
+	}
+	var req dto.SubmitAddressVerificationLocationRequest
+	if !validation.BindAndValidate(ctx, response.ValidationError, &req) {
+		return
+	}
+	data, err := c.svc.SubmitAddressVerificationLocation(userID, &req)
 	if c.handleKYCError(ctx, err) {
 		return
 	}

@@ -53,7 +53,8 @@ func SetupRouter(cfg *config.Config, ctrl *controller.KYCController) *gin.Engine
 	r.GET("/address/reverse-geocode", ctrl.GetAddressGeolocation)              // get current saved geolocation
 	r.POST("/address/reverse-geocode", ctrl.ReverseGeocode)                    // GPS lat/lon (+ optional accuracy) → Geoapify → store
 	r.GET("/address/verification", ctrl.GetAddressVerification)
-	r.POST("/address/:imageType/upload", ctrl.UploadAddressVerificationImage) // imageType: utility-bill | proof-of-address
+	r.POST("/address/verification/location", ctrl.SubmitAddressVerificationLocation) // submit lat/long + optional accuracy; reverse geocode saved to address verification
+	r.POST("/address/:imageType/upload", ctrl.UploadAddressVerificationImage)          // imageType: utility-bill | proof-of-address
 
 	// Admin (X-Admin-Key required)
 	admin := r.Group("/admin", adminKeyAuth(cfg.AdminAPIKey))

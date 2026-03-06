@@ -420,7 +420,8 @@ func (r *KYCRepository) UpsertPersonal(profileID string, dobEnc, genderEnc, pepE
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $8)
 		ON CONFLICT (kyc_profile_id) DO UPDATE SET
 			date_of_birth = EXCLUDED.date_of_birth, gender = EXCLUDED.gender, pep_status = EXCLUDED.pep_status,
-			next_of_kin_name = EXCLUDED.next_of_kin_name, next_of_kin_phone = EXCLUDED.next_of_kin_phone, submitted_at = EXCLUDED.submitted_at, updated_at = EXCLUDED.updated_at`
+			next_of_kin_name = EXCLUDED.next_of_kin_name, next_of_kin_phone = EXCLUDED.next_of_kin_phone,
+			submitted_at = EXCLUDED.submitted_at, rejection_message = '', updated_at = EXCLUDED.updated_at`
 	_, err := r.db.Exec(query, uuid.New().String(), profileID, dobEnc, genderEnc, pepEnc, nokNameEnc, nokPhoneEnc, now)
 	return err
 }
@@ -450,7 +451,7 @@ func (r *KYCRepository) UpsertIdentity(profileID, idType, idFrontURL, idBackURL,
 			id_back_url = COALESCE(NULLIF(EXCLUDED.id_back_url,''), kyc_identity_documents.id_back_url),
 			customer_image_url = COALESCE(NULLIF(EXCLUDED.customer_image_url,''), kyc_identity_documents.customer_image_url),
 			signature_url = COALESCE(NULLIF(EXCLUDED.signature_url,''), kyc_identity_documents.signature_url),
-			submitted_at = EXCLUDED.submitted_at, updated_at = EXCLUDED.updated_at`
+			submitted_at = EXCLUDED.submitted_at, rejection_message = '', updated_at = EXCLUDED.updated_at`
 	_, err := r.db.Exec(query, uuid.New().String(), profileID, idType, idFrontURL, idBackURL, customerImageURL, signatureURL, now)
 	return err
 }
@@ -481,7 +482,7 @@ func (r *KYCRepository) UpsertAddress(profileID string, houseEnc, streetEnc, cit
 		ON CONFLICT (kyc_profile_id) DO UPDATE SET
 			house_number = EXCLUDED.house_number, street = EXCLUDED.street, city = EXCLUDED.city,
 			lga = EXCLUDED.lga, state = EXCLUDED.state, full_address = EXCLUDED.full_address,
-			landmark = EXCLUDED.landmark, submitted_at = EXCLUDED.submitted_at, updated_at = EXCLUDED.updated_at`
+			landmark = EXCLUDED.landmark, submitted_at = EXCLUDED.submitted_at, rejection_message = '', updated_at = EXCLUDED.updated_at`
 	_, err := r.db.Exec(query, uuid.New().String(), profileID, houseEnc, streetEnc, cityEnc, lgaEnc, stateEnc, fullEnc, landmarkEnc, now)
 	return err
 }
@@ -537,6 +538,20 @@ func (r *KYCRepository) UpsertAddressVerificationURLs(profileID, utilityBillURL,
 			street_image_url = COALESCE(NULLIF(EXCLUDED.street_image_url,''), kyc_address_verification.street_image_url),
 			submitted_at = EXCLUDED.submitted_at, updated_at = EXCLUDED.updated_at`
 	_, err := r.db.Exec(query, uuid.New().String(), profileID, utilityBillURL, streetImageURL, now)
+	return err
+}
+
+// UpsertAddressVerificationLocation sets gps_latitude, gps_longitude, and reversed_geo_address on the address verification row (creates row if missing).
+func (r *KYCRepository) UpsertAddressVerificationLocation(profileID string, lat, lon float64, reversedGeoAddressEncrypted []byte) error {
+	now := time.Now()
+	query := `INSERT INTO kyc_address_verification (id, kyc_profile_id, utility_bill_url, street_image_url, gps_latitude, gps_longitude, reversed_geo_address, verification_status, submitted_at, created_at, updated_at)
+		VALUES ($1, $2, NULL, NULL, $3, $4, $5, 'pending', $6, $6, $6)
+		ON CONFLICT (kyc_profile_id) DO UPDATE SET
+			gps_latitude = EXCLUDED.gps_latitude,
+			gps_longitude = EXCLUDED.gps_longitude,
+			reversed_geo_address = EXCLUDED.reversed_geo_address,
+			updated_at = EXCLUDED.updated_at`
+	_, err := r.db.Exec(query, uuid.New().String(), profileID, lat, lon, reversedGeoAddressEncrypted, now)
 	return err
 }
 

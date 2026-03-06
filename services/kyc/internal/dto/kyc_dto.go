@@ -171,12 +171,22 @@ type AddressResponse struct {
 	Message            string `json:"message,omitempty"` // rejection message from admin when KYC is rejected
 }
 
-// AddressVerificationResponse for GET /kyc/address/verification (utility bill + proof of address URLs).
+// AddressVerificationResponse for GET /kyc/address/verification (utility bill + proof of address URLs + GPS + reversed address).
 type AddressVerificationResponse struct {
-	UtilityBillURL      string `json:"utilityBillUrl,omitempty"`
-	ProofOfAddressURL   string `json:"proofOfAddressUrl,omitempty"` // street_image_url
-	VerificationStatus  string `json:"verificationStatus"`
-	Submitted           bool   `json:"submitted"`
+	UtilityBillURL      string  `json:"utilityBillUrl,omitempty"`
+	ProofOfAddressURL   string  `json:"proofOfAddressUrl,omitempty"` // street_image_url
+	GPSLatitude         float64 `json:"gpsLatitude"`
+	GPSLongitude        float64 `json:"gpsLongitude"`
+	ReversedGeoAddress  string  `json:"reversedGeoAddress,omitempty"`
+	VerificationStatus  string  `json:"verificationStatus"`
+	Submitted           bool    `json:"submitted"`
+}
+
+// SubmitAddressVerificationLocationRequest for POST /kyc/address/verification/location (submit lat/long + optional accuracy; reverse geocode is fetched and saved).
+type SubmitAddressVerificationLocationRequest struct {
+	Latitude  float64  `json:"latitude" binding:"required,min=-90,max=90"`
+	Longitude float64  `json:"longitude" binding:"required,min=-180,max=180"`
+	Accuracy  *float64 `json:"accuracy" binding:"omitempty,gte=0"`
 }
 
 // AddressVerificationUploadResponse for POST /kyc/address/utility-bill/upload and .../proof-of-address/upload.
