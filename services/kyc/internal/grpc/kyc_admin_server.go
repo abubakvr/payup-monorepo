@@ -83,6 +83,42 @@ func (s *KYCAdminServer) GetKYCForWallet(ctx context.Context, req *kycpb.GetKYCF
 	}, nil
 }
 
+func (s *KYCAdminServer) GetKYCForWalletUpgrade(ctx context.Context, req *kycpb.GetKYCForWalletUpgradeRequest) (*kycpb.GetKYCForWalletUpgradeResponse, error) {
+	if req == nil || req.UserId == "" {
+		return &kycpb.GetKYCForWalletUpgradeResponse{Found: false}, nil
+	}
+	data, err := s.svc.GetKYCForWalletUpgrade(ctx, req.UserId, "")
+	if err != nil || data == nil {
+		return &kycpb.GetKYCForWalletUpgradeResponse{Found: false}, nil
+	}
+	return &kycpb.GetKYCForWalletUpgradeResponse{
+		Found:             true,
+		AccountName:       data.AccountName,
+		Bvn:               data.BVN,
+		City:              data.City,
+		Email:             data.Email,
+		HouseNumber:       data.HouseNumber,
+		IdIssueDate:       data.IDIssueDate,
+		IdNumber:          data.IDNumber,
+		IdType:            data.IDType,
+		LocalGovernment:   data.LocalGovernment,
+		Pep:               data.PEP,
+		PhoneNumber:       data.PhoneNumber,
+		State:             data.State,
+		StreetName:        data.StreetName,
+		Tier:              data.Tier,
+		IdExpiryDate:      data.IDExpiryDate,
+		NearestLandmark:   data.NearestLandmark,
+		PlaceOfBirth:      data.PlaceOfBirth,
+		Nin:               data.NIN,
+		IdFrontImage:       data.IDFrontImage,
+		IdBackImage:        data.IDBackImage,
+		CustomerImage:      data.CustomerImage,
+		UtilityBillImage:     data.UtilityBillImage,
+		ProofOfAddressImage:  data.ProofOfAddressImage,
+	}, nil
+}
+
 func (s *KYCAdminServer) ApproveKYC(ctx context.Context, req *kycpb.ApproveKYCRequest) (*kycpb.ApproveKYCResponse, error) {
 	if req == nil || req.UserId == "" {
 		return &kycpb.ApproveKYCResponse{Success: false, Message: "user_id required"}, nil

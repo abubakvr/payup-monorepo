@@ -213,3 +213,110 @@ func (c *PaymentAdminClient) ListWallets(ctx context.Context, limit, offset int3
 	}
 	return resp, nil
 }
+
+// DebitCreditWallet performs an internal debit or credit on a user's wallet (airtime, data, electricity, DSTV, etc.). Saves to transactions and ledger.
+func (c *PaymentAdminClient) DebitCreditWallet(ctx context.Context, userID string, amount float64, isCredit bool, narration string, initiatedBy string) (*paymentpb.DebitCreditWalletResponse, error) {
+	if c == nil || c.client == nil {
+		return &paymentpb.DebitCreditWalletResponse{Success: false, ErrorMessage: "payment client not configured"}, nil
+	}
+	resp, err := c.client.DebitCreditWallet(ctx, &paymentpb.DebitCreditWalletRequest{
+		UserId:      userID,
+		Amount:      amount,
+		IsCredit:    isCredit,
+		Narration:   narration,
+		InitiatedBy: initiatedBy,
+	})
+	if err != nil {
+		log.Printf("admin: payment gRPC DebitCreditWallet: %v", err)
+		return nil, err
+	}
+	return resp, nil
+}
+
+// GetWaasTransactionHistory returns 9PSB WaaS transaction history for the given user's wallet. Date range max 31 days.
+func (c *PaymentAdminClient) GetWaasTransactionHistory(ctx context.Context, userID, fromDate, toDate string, limit int32) (*paymentpb.GetWaasTransactionHistoryResponse, error) {
+	if c == nil || c.client == nil {
+		return &paymentpb.GetWaasTransactionHistoryResponse{Success: false, ErrorMessage: "payment client not configured"}, nil
+	}
+	resp, err := c.client.GetWaasTransactionHistory(ctx, &paymentpb.GetWaasTransactionHistoryRequest{
+		UserId:   userID,
+		FromDate: fromDate,
+		ToDate:   toDate,
+		Limit:    limit,
+	})
+	if err != nil {
+		log.Printf("admin: payment gRPC GetWaasTransactionHistory: %v", err)
+		return nil, err
+	}
+	return resp, nil
+}
+
+// GetWaasWalletStatus returns 9PSB WaaS wallet status for the given user's wallet.
+func (c *PaymentAdminClient) GetWaasWalletStatus(ctx context.Context, userID string) (*paymentpb.GetWaasWalletStatusResponse, error) {
+	if c == nil || c.client == nil {
+		return &paymentpb.GetWaasWalletStatusResponse{Success: false, ErrorMessage: "payment client not configured"}, nil
+	}
+	resp, err := c.client.GetWaasWalletStatus(ctx, &paymentpb.GetWaasWalletStatusRequest{UserId: userID})
+	if err != nil {
+		log.Printf("admin: payment gRPC GetWaasWalletStatus: %v", err)
+		return nil, err
+	}
+	return resp, nil
+}
+
+// ChangeWalletStatus changes the user's wallet status via 9PSB (ACTIVE or SUSPENDED). Payment service updates DB and sends audit + email.
+func (c *PaymentAdminClient) ChangeWalletStatus(ctx context.Context, userID, accountStatus, initiatedBy string) (*paymentpb.ChangeWalletStatusResponse, error) {
+	if c == nil || c.client == nil {
+		return &paymentpb.ChangeWalletStatusResponse{Success: false, ErrorMessage: "payment client not configured"}, nil
+	}
+	resp, err := c.client.ChangeWalletStatus(ctx, &paymentpb.ChangeWalletStatusRequest{
+		UserId:       userID,
+		AccountStatus: accountStatus,
+		InitiatedBy:  initiatedBy,
+	})
+	if err != nil {
+		log.Printf("admin: payment gRPC ChangeWalletStatus: %v", err)
+		return nil, err
+	}
+	return resp, nil
+}
+
+// SubmitWalletUpgrade submits a wallet tier upgrade to 9PSB (payment fetches KYC + images, sends multipart; audit + email via Kafka).
+func (c *PaymentAdminClient) SubmitWalletUpgrade(ctx context.Context, userID, initiatedBy string) (*paymentpb.SubmitWalletUpgradeResponse, error) {
+	if c == nil || c.client == nil {
+		return &paymentpb.SubmitWalletUpgradeResponse{Success: false, ErrorMessage: "payment client not configured"}, nil
+	}
+	resp, err := c.client.SubmitWalletUpgrade(ctx, &paymentpb.SubmitWalletUpgradeRequest{
+		UserId:       userID,
+		InitiatedBy:  initiatedBy,
+	})
+	if err != nil {
+		log.Printf("admin: payment gRPC SubmitWalletUpgrade: %v", err)
+		return nil, err
+	}
+	return resp, nil
+}
+
+// ListWalletUpgradeRequests returns wallet upgrade requests for admin (paginated).
+func (c *PaymentAdminClient) ListWalletUpgradeRequests(ctx context.Context, limit, offset int32) (*paymentpb.ListWalletUpgradeRequestsResponse, error) {
+	if c == nil || c.client == nil {
+		return &paymentpb.ListWalletUpgradeRequestsResponse{}, nil
+	}
+	return c.client.ListWalletUpgradeRequests(ctx, &paymentpb.ListWalletUpgradeRequestsRequest{Limit: limit, Offset: offset})
+}
+
+// GetWalletUpgradeRequest returns one wallet upgrade request by id.
+func (c *PaymentAdminClient) GetWalletUpgradeRequest(ctx context.Context, id string) (*paymentpb.GetWalletUpgradeRequestResponse, error) {
+	if c == nil || c.client == nil {
+		return &paymentpb.GetWalletUpgradeRequestResponse{Found: false}, nil
+	}
+	return c.client.GetWalletUpgradeRequest(ctx, &paymentpb.GetWalletUpgradeRequestRequest{Id: id})
+}
+
+// GetWalletUpgradeStatusByUserID returns wallet upgrade status from 9PSB upgrade_status API for a user.
+func (c *PaymentAdminClient) GetWalletUpgradeStatusByUserID(ctx context.Context, userID string) (*paymentpb.GetWalletUpgradeStatusByUserIDResponse, error) {
+	if c == nil || c.client == nil {
+		return &paymentpb.GetWalletUpgradeStatusByUserIDResponse{}, nil
+	}
+	return c.client.GetWalletUpgradeStatusByUserID(ctx, &paymentpb.GetWalletUpgradeStatusByUserIDRequest{UserId: userID})
+}

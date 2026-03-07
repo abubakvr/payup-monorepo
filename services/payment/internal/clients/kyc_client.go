@@ -43,3 +43,11 @@ func (c *KYCClient) GetKYCForWallet(ctx context.Context, userID string) (*kycpb.
 	}
 	return c.client.GetKYCForWallet(ctx, &kycpb.GetKYCForWalletRequest{UserId: userID})
 }
+
+// GetKYCForWalletUpgrade returns KYC data and image bytes for 9PSB wallet_upgrade_file_upload. Returns nil if not found or client is nil.
+func (c *KYCClient) GetKYCForWalletUpgrade(ctx context.Context, userID string) (*kycpb.GetKYCForWalletUpgradeResponse, error) {
+	if c == nil || c.client == nil {
+		return nil, nil
+	}
+	return c.client.GetKYCForWalletUpgrade(ctx, &kycpb.GetKYCForWalletUpgradeRequest{UserId: userID})
+}

@@ -21,6 +21,278 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type GetKYCForWalletUpgradeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetKYCForWalletUpgradeRequest) Reset() {
+	*x = GetKYCForWalletUpgradeRequest{}
+	mi := &file_proto_kyc_kyc_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetKYCForWalletUpgradeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetKYCForWalletUpgradeRequest) ProtoMessage() {}
+
+func (x *GetKYCForWalletUpgradeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_kyc_kyc_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetKYCForWalletUpgradeRequest.ProtoReflect.Descriptor instead.
+func (*GetKYCForWalletUpgradeRequest) Descriptor() ([]byte, []int) {
+	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *GetKYCForWalletUpgradeRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type GetKYCForWalletUpgradeResponse struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Found               bool                   `protobuf:"varint,1,opt,name=found,proto3" json:"found,omitempty"`
+	AccountName         string                 `protobuf:"bytes,2,opt,name=account_name,json=accountName,proto3" json:"account_name,omitempty"` // e.g. "ZEROSOFT/ADEOLUWASINA DEBORAH"
+	Bvn                 string                 `protobuf:"bytes,3,opt,name=bvn,proto3" json:"bvn,omitempty"`
+	City                string                 `protobuf:"bytes,4,opt,name=city,proto3" json:"city,omitempty"`
+	Email               string                 `protobuf:"bytes,5,opt,name=email,proto3" json:"email,omitempty"`
+	HouseNumber         string                 `protobuf:"bytes,6,opt,name=house_number,json=houseNumber,proto3" json:"house_number,omitempty"`
+	IdIssueDate         string                 `protobuf:"bytes,7,opt,name=id_issue_date,json=idIssueDate,proto3" json:"id_issue_date,omitempty"` // YYYY-MM-DD
+	IdNumber            string                 `protobuf:"bytes,8,opt,name=id_number,json=idNumber,proto3" json:"id_number,omitempty"`
+	IdType              string                 `protobuf:"bytes,9,opt,name=id_type,json=idType,proto3" json:"id_type,omitempty"` // 1=NIN, 2=Driver's license, etc.
+	LocalGovernment     string                 `protobuf:"bytes,10,opt,name=local_government,json=localGovernment,proto3" json:"local_government,omitempty"`
+	Pep                 string                 `protobuf:"bytes,11,opt,name=pep,proto3" json:"pep,omitempty"` // YES or NO
+	PhoneNumber         string                 `protobuf:"bytes,12,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
+	State               string                 `protobuf:"bytes,13,opt,name=state,proto3" json:"state,omitempty"`
+	StreetName          string                 `protobuf:"bytes,14,opt,name=street_name,json=streetName,proto3" json:"street_name,omitempty"`
+	Tier                string                 `protobuf:"bytes,15,opt,name=tier,proto3" json:"tier,omitempty"`                                       // e.g. "3"
+	IdExpiryDate        string                 `protobuf:"bytes,16,opt,name=id_expiry_date,json=idExpiryDate,proto3" json:"id_expiry_date,omitempty"` // YYYY-MM-DD
+	NearestLandmark     string                 `protobuf:"bytes,17,opt,name=nearest_landmark,json=nearestLandmark,proto3" json:"nearest_landmark,omitempty"`
+	PlaceOfBirth        string                 `protobuf:"bytes,18,opt,name=place_of_birth,json=placeOfBirth,proto3" json:"place_of_birth,omitempty"`
+	Nin                 string                 `protobuf:"bytes,19,opt,name=nin,proto3" json:"nin,omitempty"`
+	IdFrontImage        []byte                 `protobuf:"bytes,20,opt,name=id_front_image,json=idFrontImage,proto3" json:"id_front_image,omitempty"` // JPEG/PNG bytes for multipart file
+	IdBackImage         []byte                 `protobuf:"bytes,21,opt,name=id_back_image,json=idBackImage,proto3" json:"id_back_image,omitempty"`
+	CustomerImage       []byte                 `protobuf:"bytes,22,opt,name=customer_image,json=customerImage,proto3" json:"customer_image,omitempty"`
+	UtilityBillImage    []byte                 `protobuf:"bytes,23,opt,name=utility_bill_image,json=utilityBillImage,proto3" json:"utility_bill_image,omitempty"`            // for 9PSB wallet upgrade utilityBill field
+	ProofOfAddressImage []byte                 `protobuf:"bytes,24,opt,name=proof_of_address_image,json=proofOfAddressImage,proto3" json:"proof_of_address_image,omitempty"` // for 9PSB Tier 3 proofOfAddressVerification
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *GetKYCForWalletUpgradeResponse) Reset() {
+	*x = GetKYCForWalletUpgradeResponse{}
+	mi := &file_proto_kyc_kyc_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetKYCForWalletUpgradeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetKYCForWalletUpgradeResponse) ProtoMessage() {}
+
+func (x *GetKYCForWalletUpgradeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_kyc_kyc_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetKYCForWalletUpgradeResponse.ProtoReflect.Descriptor instead.
+func (*GetKYCForWalletUpgradeResponse) Descriptor() ([]byte, []int) {
+	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetFound() bool {
+	if x != nil {
+		return x.Found
+	}
+	return false
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetAccountName() string {
+	if x != nil {
+		return x.AccountName
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetBvn() string {
+	if x != nil {
+		return x.Bvn
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetCity() string {
+	if x != nil {
+		return x.City
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetHouseNumber() string {
+	if x != nil {
+		return x.HouseNumber
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetIdIssueDate() string {
+	if x != nil {
+		return x.IdIssueDate
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetIdNumber() string {
+	if x != nil {
+		return x.IdNumber
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetIdType() string {
+	if x != nil {
+		return x.IdType
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetLocalGovernment() string {
+	if x != nil {
+		return x.LocalGovernment
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetPep() string {
+	if x != nil {
+		return x.Pep
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetPhoneNumber() string {
+	if x != nil {
+		return x.PhoneNumber
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetStreetName() string {
+	if x != nil {
+		return x.StreetName
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetTier() string {
+	if x != nil {
+		return x.Tier
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetIdExpiryDate() string {
+	if x != nil {
+		return x.IdExpiryDate
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetNearestLandmark() string {
+	if x != nil {
+		return x.NearestLandmark
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetPlaceOfBirth() string {
+	if x != nil {
+		return x.PlaceOfBirth
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetNin() string {
+	if x != nil {
+		return x.Nin
+	}
+	return ""
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetIdFrontImage() []byte {
+	if x != nil {
+		return x.IdFrontImage
+	}
+	return nil
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetIdBackImage() []byte {
+	if x != nil {
+		return x.IdBackImage
+	}
+	return nil
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetCustomerImage() []byte {
+	if x != nil {
+		return x.CustomerImage
+	}
+	return nil
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetUtilityBillImage() []byte {
+	if x != nil {
+		return x.UtilityBillImage
+	}
+	return nil
+}
+
+func (x *GetKYCForWalletUpgradeResponse) GetProofOfAddressImage() []byte {
+	if x != nil {
+		return x.ProofOfAddressImage
+	}
+	return nil
+}
+
 type ApproveKYCRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -30,7 +302,7 @@ type ApproveKYCRequest struct {
 
 func (x *ApproveKYCRequest) Reset() {
 	*x = ApproveKYCRequest{}
-	mi := &file_proto_kyc_kyc_proto_msgTypes[0]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -42,7 +314,7 @@ func (x *ApproveKYCRequest) String() string {
 func (*ApproveKYCRequest) ProtoMessage() {}
 
 func (x *ApproveKYCRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kyc_kyc_proto_msgTypes[0]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,7 +327,7 @@ func (x *ApproveKYCRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApproveKYCRequest.ProtoReflect.Descriptor instead.
 func (*ApproveKYCRequest) Descriptor() ([]byte, []int) {
-	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{0}
+	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ApproveKYCRequest) GetUserId() string {
@@ -75,7 +347,7 @@ type ApproveKYCResponse struct {
 
 func (x *ApproveKYCResponse) Reset() {
 	*x = ApproveKYCResponse{}
-	mi := &file_proto_kyc_kyc_proto_msgTypes[1]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -87,7 +359,7 @@ func (x *ApproveKYCResponse) String() string {
 func (*ApproveKYCResponse) ProtoMessage() {}
 
 func (x *ApproveKYCResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kyc_kyc_proto_msgTypes[1]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -100,7 +372,7 @@ func (x *ApproveKYCResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApproveKYCResponse.ProtoReflect.Descriptor instead.
 func (*ApproveKYCResponse) Descriptor() ([]byte, []int) {
-	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{1}
+	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ApproveKYCResponse) GetSuccess() bool {
@@ -126,7 +398,7 @@ type GetKYCForWalletRequest struct {
 
 func (x *GetKYCForWalletRequest) Reset() {
 	*x = GetKYCForWalletRequest{}
-	mi := &file_proto_kyc_kyc_proto_msgTypes[2]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -138,7 +410,7 @@ func (x *GetKYCForWalletRequest) String() string {
 func (*GetKYCForWalletRequest) ProtoMessage() {}
 
 func (x *GetKYCForWalletRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kyc_kyc_proto_msgTypes[2]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -151,7 +423,7 @@ func (x *GetKYCForWalletRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetKYCForWalletRequest.ProtoReflect.Descriptor instead.
 func (*GetKYCForWalletRequest) Descriptor() ([]byte, []int) {
-	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{2}
+	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetKYCForWalletRequest) GetUserId() string {
@@ -183,7 +455,7 @@ type GetKYCForWalletResponse struct {
 
 func (x *GetKYCForWalletResponse) Reset() {
 	*x = GetKYCForWalletResponse{}
-	mi := &file_proto_kyc_kyc_proto_msgTypes[3]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -195,7 +467,7 @@ func (x *GetKYCForWalletResponse) String() string {
 func (*GetKYCForWalletResponse) ProtoMessage() {}
 
 func (x *GetKYCForWalletResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kyc_kyc_proto_msgTypes[3]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -208,7 +480,7 @@ func (x *GetKYCForWalletResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetKYCForWalletResponse.ProtoReflect.Descriptor instead.
 func (*GetKYCForWalletResponse) Descriptor() ([]byte, []int) {
-	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{3}
+	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetKYCForWalletResponse) GetFound() bool {
@@ -318,7 +590,7 @@ type GetKYCStatusRequest struct {
 
 func (x *GetKYCStatusRequest) Reset() {
 	*x = GetKYCStatusRequest{}
-	mi := &file_proto_kyc_kyc_proto_msgTypes[4]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -330,7 +602,7 @@ func (x *GetKYCStatusRequest) String() string {
 func (*GetKYCStatusRequest) ProtoMessage() {}
 
 func (x *GetKYCStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kyc_kyc_proto_msgTypes[4]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -343,7 +615,7 @@ func (x *GetKYCStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetKYCStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetKYCStatusRequest) Descriptor() ([]byte, []int) {
-	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{4}
+	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetKYCStatusRequest) GetUserId() string {
@@ -362,7 +634,7 @@ type GetKYCStatusResponse struct {
 
 func (x *GetKYCStatusResponse) Reset() {
 	*x = GetKYCStatusResponse{}
-	mi := &file_proto_kyc_kyc_proto_msgTypes[5]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -374,7 +646,7 @@ func (x *GetKYCStatusResponse) String() string {
 func (*GetKYCStatusResponse) ProtoMessage() {}
 
 func (x *GetKYCStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kyc_kyc_proto_msgTypes[5]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -387,7 +659,7 @@ func (x *GetKYCStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetKYCStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetKYCStatusResponse) Descriptor() ([]byte, []int) {
-	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{5}
+	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetKYCStatusResponse) GetStatus() string {
@@ -406,7 +678,7 @@ type GetFullKYCForAdminRequest struct {
 
 func (x *GetFullKYCForAdminRequest) Reset() {
 	*x = GetFullKYCForAdminRequest{}
-	mi := &file_proto_kyc_kyc_proto_msgTypes[6]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -418,7 +690,7 @@ func (x *GetFullKYCForAdminRequest) String() string {
 func (*GetFullKYCForAdminRequest) ProtoMessage() {}
 
 func (x *GetFullKYCForAdminRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kyc_kyc_proto_msgTypes[6]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -431,7 +703,7 @@ func (x *GetFullKYCForAdminRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFullKYCForAdminRequest.ProtoReflect.Descriptor instead.
 func (*GetFullKYCForAdminRequest) Descriptor() ([]byte, []int) {
-	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{6}
+	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetFullKYCForAdminRequest) GetUserId() string {
@@ -451,7 +723,7 @@ type GetFullKYCForAdminResponse struct {
 
 func (x *GetFullKYCForAdminResponse) Reset() {
 	*x = GetFullKYCForAdminResponse{}
-	mi := &file_proto_kyc_kyc_proto_msgTypes[7]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -463,7 +735,7 @@ func (x *GetFullKYCForAdminResponse) String() string {
 func (*GetFullKYCForAdminResponse) ProtoMessage() {}
 
 func (x *GetFullKYCForAdminResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kyc_kyc_proto_msgTypes[7]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -476,7 +748,7 @@ func (x *GetFullKYCForAdminResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFullKYCForAdminResponse.ProtoReflect.Descriptor instead.
 func (*GetFullKYCForAdminResponse) Descriptor() ([]byte, []int) {
-	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{7}
+	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetFullKYCForAdminResponse) GetFound() bool {
@@ -503,7 +775,7 @@ type CountProfilesRequest struct {
 
 func (x *CountProfilesRequest) Reset() {
 	*x = CountProfilesRequest{}
-	mi := &file_proto_kyc_kyc_proto_msgTypes[8]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -515,7 +787,7 @@ func (x *CountProfilesRequest) String() string {
 func (*CountProfilesRequest) ProtoMessage() {}
 
 func (x *CountProfilesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kyc_kyc_proto_msgTypes[8]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -528,7 +800,7 @@ func (x *CountProfilesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CountProfilesRequest.ProtoReflect.Descriptor instead.
 func (*CountProfilesRequest) Descriptor() ([]byte, []int) {
-	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{8}
+	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *CountProfilesRequest) GetStatus() string {
@@ -554,7 +826,7 @@ type CountProfilesResponse struct {
 
 func (x *CountProfilesResponse) Reset() {
 	*x = CountProfilesResponse{}
-	mi := &file_proto_kyc_kyc_proto_msgTypes[9]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -566,7 +838,7 @@ func (x *CountProfilesResponse) String() string {
 func (*CountProfilesResponse) ProtoMessage() {}
 
 func (x *CountProfilesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_kyc_kyc_proto_msgTypes[9]
+	mi := &file_proto_kyc_kyc_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -579,7 +851,7 @@ func (x *CountProfilesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CountProfilesResponse.ProtoReflect.Descriptor instead.
 func (*CountProfilesResponse) Descriptor() ([]byte, []int) {
-	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{9}
+	return file_proto_kyc_kyc_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *CountProfilesResponse) GetCount() int64 {
@@ -593,7 +865,36 @@ var File_proto_kyc_kyc_proto protoreflect.FileDescriptor
 
 const file_proto_kyc_kyc_proto_rawDesc = "" +
 	"\n" +
-	"\x13proto/kyc/kyc.proto\x12\x03kyc\",\n" +
+	"\x13proto/kyc/kyc.proto\x12\x03kyc\"8\n" +
+	"\x1dGetKYCForWalletUpgradeRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x9a\x06\n" +
+	"\x1eGetKYCForWalletUpgradeResponse\x12\x14\n" +
+	"\x05found\x18\x01 \x01(\bR\x05found\x12!\n" +
+	"\faccount_name\x18\x02 \x01(\tR\vaccountName\x12\x10\n" +
+	"\x03bvn\x18\x03 \x01(\tR\x03bvn\x12\x12\n" +
+	"\x04city\x18\x04 \x01(\tR\x04city\x12\x14\n" +
+	"\x05email\x18\x05 \x01(\tR\x05email\x12!\n" +
+	"\fhouse_number\x18\x06 \x01(\tR\vhouseNumber\x12\"\n" +
+	"\rid_issue_date\x18\a \x01(\tR\vidIssueDate\x12\x1b\n" +
+	"\tid_number\x18\b \x01(\tR\bidNumber\x12\x17\n" +
+	"\aid_type\x18\t \x01(\tR\x06idType\x12)\n" +
+	"\x10local_government\x18\n" +
+	" \x01(\tR\x0flocalGovernment\x12\x10\n" +
+	"\x03pep\x18\v \x01(\tR\x03pep\x12!\n" +
+	"\fphone_number\x18\f \x01(\tR\vphoneNumber\x12\x14\n" +
+	"\x05state\x18\r \x01(\tR\x05state\x12\x1f\n" +
+	"\vstreet_name\x18\x0e \x01(\tR\n" +
+	"streetName\x12\x12\n" +
+	"\x04tier\x18\x0f \x01(\tR\x04tier\x12$\n" +
+	"\x0eid_expiry_date\x18\x10 \x01(\tR\fidExpiryDate\x12)\n" +
+	"\x10nearest_landmark\x18\x11 \x01(\tR\x0fnearestLandmark\x12$\n" +
+	"\x0eplace_of_birth\x18\x12 \x01(\tR\fplaceOfBirth\x12\x10\n" +
+	"\x03nin\x18\x13 \x01(\tR\x03nin\x12$\n" +
+	"\x0eid_front_image\x18\x14 \x01(\fR\fidFrontImage\x12\"\n" +
+	"\rid_back_image\x18\x15 \x01(\fR\vidBackImage\x12%\n" +
+	"\x0ecustomer_image\x18\x16 \x01(\fR\rcustomerImage\x12,\n" +
+	"\x12utility_bill_image\x18\x17 \x01(\fR\x10utilityBillImage\x123\n" +
+	"\x16proof_of_address_image\x18\x18 \x01(\fR\x13proofOfAddressImage\",\n" +
 	"\x11ApproveKYCRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"H\n" +
 	"\x12ApproveKYCResponse\x12\x18\n" +
@@ -633,13 +934,14 @@ const file_proto_kyc_kyc_proto_rawDesc = "" +
 	"\n" +
 	"_kyc_level\"-\n" +
 	"\x15CountProfilesResponse\x12\x14\n" +
-	"\x05count\x18\x01 \x01(\x03R\x05count2\xfd\x02\n" +
+	"\x05count\x18\x01 \x01(\x03R\x05count2\xe0\x03\n" +
 	"\n" +
 	"KYCService\x12C\n" +
 	"\fGetKYCStatus\x12\x18.kyc.GetKYCStatusRequest\x1a\x19.kyc.GetKYCStatusResponse\x12U\n" +
 	"\x12GetFullKYCForAdmin\x12\x1e.kyc.GetFullKYCForAdminRequest\x1a\x1f.kyc.GetFullKYCForAdminResponse\x12F\n" +
 	"\rCountProfiles\x12\x19.kyc.CountProfilesRequest\x1a\x1a.kyc.CountProfilesResponse\x12L\n" +
-	"\x0fGetKYCForWallet\x12\x1b.kyc.GetKYCForWalletRequest\x1a\x1c.kyc.GetKYCForWalletResponse\x12=\n" +
+	"\x0fGetKYCForWallet\x12\x1b.kyc.GetKYCForWalletRequest\x1a\x1c.kyc.GetKYCForWalletResponse\x12a\n" +
+	"\x16GetKYCForWalletUpgrade\x12\".kyc.GetKYCForWalletUpgradeRequest\x1a#.kyc.GetKYCForWalletUpgradeResponse\x12=\n" +
 	"\n" +
 	"ApproveKYC\x12\x16.kyc.ApproveKYCRequest\x1a\x17.kyc.ApproveKYCResponseB3Z1github.com/abubakvr/payup-backend/proto/kyc;kycpbb\x06proto3"
 
@@ -655,35 +957,39 @@ func file_proto_kyc_kyc_proto_rawDescGZIP() []byte {
 	return file_proto_kyc_kyc_proto_rawDescData
 }
 
-var file_proto_kyc_kyc_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_proto_kyc_kyc_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_proto_kyc_kyc_proto_goTypes = []any{
-	(*ApproveKYCRequest)(nil),          // 0: kyc.ApproveKYCRequest
-	(*ApproveKYCResponse)(nil),         // 1: kyc.ApproveKYCResponse
-	(*GetKYCForWalletRequest)(nil),     // 2: kyc.GetKYCForWalletRequest
-	(*GetKYCForWalletResponse)(nil),    // 3: kyc.GetKYCForWalletResponse
-	(*GetKYCStatusRequest)(nil),        // 4: kyc.GetKYCStatusRequest
-	(*GetKYCStatusResponse)(nil),       // 5: kyc.GetKYCStatusResponse
-	(*GetFullKYCForAdminRequest)(nil),  // 6: kyc.GetFullKYCForAdminRequest
-	(*GetFullKYCForAdminResponse)(nil), // 7: kyc.GetFullKYCForAdminResponse
-	(*CountProfilesRequest)(nil),       // 8: kyc.CountProfilesRequest
-	(*CountProfilesResponse)(nil),      // 9: kyc.CountProfilesResponse
+	(*GetKYCForWalletUpgradeRequest)(nil),  // 0: kyc.GetKYCForWalletUpgradeRequest
+	(*GetKYCForWalletUpgradeResponse)(nil), // 1: kyc.GetKYCForWalletUpgradeResponse
+	(*ApproveKYCRequest)(nil),              // 2: kyc.ApproveKYCRequest
+	(*ApproveKYCResponse)(nil),             // 3: kyc.ApproveKYCResponse
+	(*GetKYCForWalletRequest)(nil),         // 4: kyc.GetKYCForWalletRequest
+	(*GetKYCForWalletResponse)(nil),        // 5: kyc.GetKYCForWalletResponse
+	(*GetKYCStatusRequest)(nil),            // 6: kyc.GetKYCStatusRequest
+	(*GetKYCStatusResponse)(nil),           // 7: kyc.GetKYCStatusResponse
+	(*GetFullKYCForAdminRequest)(nil),      // 8: kyc.GetFullKYCForAdminRequest
+	(*GetFullKYCForAdminResponse)(nil),     // 9: kyc.GetFullKYCForAdminResponse
+	(*CountProfilesRequest)(nil),           // 10: kyc.CountProfilesRequest
+	(*CountProfilesResponse)(nil),          // 11: kyc.CountProfilesResponse
 }
 var file_proto_kyc_kyc_proto_depIdxs = []int32{
-	4, // 0: kyc.KYCService.GetKYCStatus:input_type -> kyc.GetKYCStatusRequest
-	6, // 1: kyc.KYCService.GetFullKYCForAdmin:input_type -> kyc.GetFullKYCForAdminRequest
-	8, // 2: kyc.KYCService.CountProfiles:input_type -> kyc.CountProfilesRequest
-	2, // 3: kyc.KYCService.GetKYCForWallet:input_type -> kyc.GetKYCForWalletRequest
-	0, // 4: kyc.KYCService.ApproveKYC:input_type -> kyc.ApproveKYCRequest
-	5, // 5: kyc.KYCService.GetKYCStatus:output_type -> kyc.GetKYCStatusResponse
-	7, // 6: kyc.KYCService.GetFullKYCForAdmin:output_type -> kyc.GetFullKYCForAdminResponse
-	9, // 7: kyc.KYCService.CountProfiles:output_type -> kyc.CountProfilesResponse
-	3, // 8: kyc.KYCService.GetKYCForWallet:output_type -> kyc.GetKYCForWalletResponse
-	1, // 9: kyc.KYCService.ApproveKYC:output_type -> kyc.ApproveKYCResponse
-	5, // [5:10] is the sub-list for method output_type
-	0, // [0:5] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	6,  // 0: kyc.KYCService.GetKYCStatus:input_type -> kyc.GetKYCStatusRequest
+	8,  // 1: kyc.KYCService.GetFullKYCForAdmin:input_type -> kyc.GetFullKYCForAdminRequest
+	10, // 2: kyc.KYCService.CountProfiles:input_type -> kyc.CountProfilesRequest
+	4,  // 3: kyc.KYCService.GetKYCForWallet:input_type -> kyc.GetKYCForWalletRequest
+	0,  // 4: kyc.KYCService.GetKYCForWalletUpgrade:input_type -> kyc.GetKYCForWalletUpgradeRequest
+	2,  // 5: kyc.KYCService.ApproveKYC:input_type -> kyc.ApproveKYCRequest
+	7,  // 6: kyc.KYCService.GetKYCStatus:output_type -> kyc.GetKYCStatusResponse
+	9,  // 7: kyc.KYCService.GetFullKYCForAdmin:output_type -> kyc.GetFullKYCForAdminResponse
+	11, // 8: kyc.KYCService.CountProfiles:output_type -> kyc.CountProfilesResponse
+	5,  // 9: kyc.KYCService.GetKYCForWallet:output_type -> kyc.GetKYCForWalletResponse
+	1,  // 10: kyc.KYCService.GetKYCForWalletUpgrade:output_type -> kyc.GetKYCForWalletUpgradeResponse
+	3,  // 11: kyc.KYCService.ApproveKYC:output_type -> kyc.ApproveKYCResponse
+	6,  // [6:12] is the sub-list for method output_type
+	0,  // [0:6] is the sub-list for method input_type
+	0,  // [0:0] is the sub-list for extension type_name
+	0,  // [0:0] is the sub-list for extension extendee
+	0,  // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_proto_kyc_kyc_proto_init() }
@@ -691,14 +997,14 @@ func file_proto_kyc_kyc_proto_init() {
 	if File_proto_kyc_kyc_proto != nil {
 		return
 	}
-	file_proto_kyc_kyc_proto_msgTypes[8].OneofWrappers = []any{}
+	file_proto_kyc_kyc_proto_msgTypes[10].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_kyc_kyc_proto_rawDesc), len(file_proto_kyc_kyc_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -6,7 +6,8 @@ COPY proto /proto
 COPY services/kyc/go.mod services/kyc/go.sum ./
 RUN go mod download
 COPY services/kyc/ ./
-# -p 1 reduces peak memory to avoid OOM kill in constrained Docker builds
+# -p 1 and GOGC reduce peak memory to avoid OOM kill in constrained Docker builds
+ENV GOGC=50
 RUN CGO_ENABLED=0 GOOS=linux go build -p 1 -ldflags="-s -w" -o kyc-http cmd/api/main.go
 
 # Run stage (kyc-http serves both HTTP and gRPC in-process; kyc-grpc excluded to avoid port conflict and proto duplicate)

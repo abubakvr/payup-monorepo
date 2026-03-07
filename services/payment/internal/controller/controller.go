@@ -3,6 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/abubakvr/payup-backend/services/payment/internal/auth"
 	"github.com/abubakvr/payup-backend/services/payment/internal/config"
+	"github.com/abubakvr/payup-backend/services/payment/internal/crypto"
 	"github.com/abubakvr/payup-backend/services/payment/internal/idempotency"
 	"github.com/abubakvr/payup-backend/services/payment/internal/service"
 	"github.com/abubakvr/payup-backend/services/payment/internal/validator"
@@ -230,6 +232,203 @@ func (c *PaymentController) GetBalance(ctx *gin.Context) {
 		"status":            result.Status,
 	}
 	Success(ctx, http.StatusOK, "Successful", CodeSuccess, data)
+}
+
+// GetWaasTransactions returns 9PSB WaaS transaction history for the authenticated user's wallet. Query: from_date, to_date (YYYY-MM-DD), limit (default 20). Max 31 days range.
+func (c *PaymentController) GetWaasTransactions(ctx *gin.Context) {
+	userID, err := auth.DecodeUserIDFromRequest(ctx.GetHeader("Authorization"), c.cfg.JWTSecret)
+	if err != nil {
+		AbortUnauthorized(ctx, "invalid or missing token")
+		return
+	}
+	fromDate := ctx.Query("from_date")
+	toDate := ctx.Query("to_date")
+	if fromDate == "" || toDate == "" {
+		Error(ctx, http.StatusBadRequest, "from_date and to_date (YYYY-MM-DD) are required", CodeBadRequest)
+		return
+	}
+	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "20"))
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	result, err := c.svc.GetWaasTransactionHistory(ctx.Request.Context(), userID, fromDate, toDate, limit)
+	if err != nil {
+		if strings.Contains(err.Error(), "no active wallet") {
+			Error(ctx, http.StatusNotFound, err.Error(), CodeConflict)
+			return
+		}
+		if strings.Contains(err.Error(), "invalid user_id") {
+			Error(ctx, http.StatusBadRequest, err.Error(), CodeBadRequest)
+			return
+		}
+		if strings.Contains(err.Error(), "9PSB WaaS") {
+			Error(ctx, http.StatusBadRequest, err.Error(), CodeBadRequest)
+			return
+		}
+		Error(ctx, http.StatusInternalServerError, err.Error(), CodeInternal)
+		return
+	}
+	transactions := make([]gin.H, 0, len(result.Data.Message))
+	for _, t := range result.Data.Message {
+		transactions = append(transactions, gin.H{
+			"transaction_date":        t.TransactionDate,
+			"transaction_date_string": t.TransactionDateString,
+			"amount":                  t.Amount,
+			"narration":               t.Narration,
+			"balance":                 t.Balance,
+			"reference_id":            t.ReferenceID,
+			"debit":                   t.Debit,
+			"credit":                  t.Credit,
+			"unique_identifier":      t.UniqueIdentifier,
+			"is_reversed":             t.IsReversed,
+		})
+	}
+	Success(ctx, http.StatusOK, result.Message, CodeSuccess, gin.H{
+		"status":       result.Status,
+		"transactions": transactions,
+	})
+}
+
+// GetWaasWalletStatus returns 9PSB WaaS wallet status for the authenticated user's wallet.
+func (c *PaymentController) GetWaasWalletStatus(ctx *gin.Context) {
+	userID, err := auth.DecodeUserIDFromRequest(ctx.GetHeader("Authorization"), c.cfg.JWTSecret)
+	if err != nil {
+		AbortUnauthorized(ctx, "invalid or missing token")
+		return
+	}
+	result, err := c.svc.GetWaasWalletStatus(ctx.Request.Context(), userID)
+	if err != nil {
+		if strings.Contains(err.Error(), "no active wallet") {
+			Error(ctx, http.StatusNotFound, err.Error(), CodeConflict)
+			return
+		}
+		if strings.Contains(err.Error(), "invalid user_id") {
+			Error(ctx, http.StatusBadRequest, err.Error(), CodeBadRequest)
+			return
+		}
+		if strings.Contains(err.Error(), "9PSB WaaS") {
+			Error(ctx, http.StatusBadRequest, err.Error(), CodeBadRequest)
+			return
+		}
+		Error(ctx, http.StatusInternalServerError, err.Error(), CodeInternal)
+		return
+	}
+	Success(ctx, http.StatusOK, result.Message, CodeSuccess, gin.H{
+		"wallet_status":  result.Data.WalletStatus,
+		"response_code":  result.Data.ResponseCode,
+	})
+}
+
+// GetWalletUpgradeStatus returns wallet upgrade status from 9PSB upgrade_status API (source of truth). Requires JWT. Used by user and admin.
+func (c *PaymentController) GetWalletUpgradeStatus(ctx *gin.Context) {
+	userID, err := auth.DecodeUserIDFromRequest(ctx.GetHeader("Authorization"), c.cfg.JWTSecret)
+	if err != nil {
+		AbortUnauthorized(ctx, "invalid or missing token")
+		return
+	}
+	result, err := c.svc.GetWalletUpgradeStatus(ctx.Request.Context(), userID)
+	if err != nil {
+		if strings.Contains(err.Error(), "invalid user_id") {
+			Error(ctx, http.StatusBadRequest, err.Error(), CodeBadRequest)
+			return
+		}
+		Error(ctx, http.StatusInternalServerError, err.Error(), CodeInternal)
+		return
+	}
+	payload := gin.H{
+		"has_wallet": result.HasWallet,
+		"upgrade_status": nil,
+	}
+	if result.UpgradeStatus != nil {
+		payload["upgrade_status"] = gin.H{
+			"status":  result.UpgradeStatus.Status,
+			"message": result.UpgradeStatus.Message,
+			"data": gin.H{
+				"message": result.UpgradeStatus.Data.Message,
+				"status":  result.UpgradeStatus.Data.Status,
+			},
+		}
+	}
+	if result.Latest != nil {
+		r := result.Latest
+		payload["latest_request"] = gin.H{
+			"id":                r.ID,
+			"upgrade_ref":       r.UpgradeRef,
+			"tier_from":         r.TierFrom,
+			"tier_to":           r.TierTo,
+			"upgrade_method":    r.UpgradeMethod,
+			"initiation_status": r.InitiationStatus,
+			"final_status":      r.FinalStatus,
+			"submitted_at":      formatTimePtr(r.SubmittedAt),
+			"finalized_at":      formatTimePtr(r.FinalizedAt),
+			"created_at":        r.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		}
+	}
+	Success(ctx, http.StatusOK, "Successful", CodeSuccess, payload)
+}
+
+func formatTimePtr(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.Format("2006-01-02T15:04:05Z07:00")
+}
+
+// NinePSBWebhookPayload is the parsed 9PSB webhook body. For WALLET_UPGRADE: status APPROVED or DECLINED, accountNumber for lookup.
+type NinePSBWebhookPayload struct {
+	Event         string `json:"event"`
+	Status        string `json:"status"`
+	AccountNumber string `json:"accountNumber"`
+	DeclineReason string `json:"declineReason"`
+	Message       string `json:"message"`
+	Data          struct {
+		AccountNumber string `json:"accountNumber"`
+	} `json:"data"`
+}
+
+// Handle9PSBWebhook POST /webhooks/9psb — receives 9PSB webhooks. For event=wallet-upgrade: inserts webhook_events, finds upgrade request by account_number_hash, finalizes (final_status + wallet tier on APPROVED), marks webhook PROCESSED. Returns 200 so 9PSB does not retry.
+func (c *PaymentController) Handle9PSBWebhook(ctx *gin.Context) {
+	rawBody, err := io.ReadAll(ctx.Request.Body)
+	if err != nil {
+		Error(ctx, http.StatusBadRequest, "invalid body", CodeBadRequest)
+		return
+	}
+	var payload NinePSBWebhookPayload
+	if err := json.Unmarshal(rawBody, &payload); err != nil {
+		Error(ctx, http.StatusBadRequest, "invalid JSON", CodeBadRequest)
+		return
+	}
+	if strings.TrimSpace(strings.ToLower(payload.Event)) != "wallet-upgrade" {
+		Success(ctx, http.StatusOK, "ok", CodeSuccess, gin.H{"processed": false})
+		return
+	}
+	accountNumber := strings.TrimSpace(payload.AccountNumber)
+	if accountNumber == "" {
+		accountNumber = strings.TrimSpace(payload.Data.AccountNumber)
+	}
+	if accountNumber == "" {
+		Success(ctx, http.StatusOK, "ok", CodeSuccess, gin.H{"processed": false})
+		return
+	}
+	finalStatus := strings.TrimSpace(strings.ToUpper(payload.Status))
+	if finalStatus != "APPROVED" && finalStatus != "DECLINED" {
+		finalStatus = "DECLINED"
+	}
+	declinedReason := strings.TrimSpace(payload.DeclineReason)
+	if declinedReason == "" {
+		declinedReason = strings.TrimSpace(payload.Message)
+	}
+	accountNumberHash := crypto.FieldHash(accountNumber)
+	if err := c.svc.ProcessWalletUpgradeWebhook(ctx.Request.Context(), accountNumberHash, finalStatus, declinedReason, rawBody); err != nil {
+		// Log but return 200 so 9PSB does not retry; fix data or reprocess manually
+		ctx.Error(err)
+		Success(ctx, http.StatusOK, "ok", CodeSuccess, gin.H{"processed": false, "error": err.Error()})
+		return
+	}
+	Success(ctx, http.StatusOK, "ok", CodeSuccess, gin.H{"processed": true})
 }
 
 // BeneficiaryEnquiryRequest is the JSON body for POST /wallet/beneficiary-enquiry (resolve account name for display).

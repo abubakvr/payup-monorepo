@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"sync"
 	"time"
@@ -35,30 +36,45 @@ type AuthenticateResponse struct {
 type TokenProvider struct {
 	baseURL      string
 	baseURL2     string // optional; for wallet_other_banks if different from baseURL
+	waasBaseURL  string // optional; for WaaS debit/credit e.g. http://102.216.128.75:9090/waas
 	username     string
 	password     string
 	clientID     string
 	clientSecret string
-	authRepo     *repository.AuthTokenRepository
-	httpClient   *http.Client
-	mu           sync.Mutex
+	authRepo    *repository.AuthTokenRepository
+	httpClient  *http.Client
+	waasClient  *http.Client // uses custom transport to tolerate duplicate Transfer-Encoding in 9PSB response
+	mu          sync.Mutex
 }
 
-// NewTokenProvider creates a token provider that uses the auth_tokens table (encrypted). baseURL2 is optional (for wallet_other_banks).
-func NewTokenProvider(baseURL, baseURL2, username, password, clientID, clientSecret string, authRepo *repository.AuthTokenRepository) *TokenProvider {
+// NewTokenProvider creates a token provider that uses the auth_tokens table (encrypted). baseURL2 is optional (for wallet_other_banks). waasBaseURL is optional (for WaaS debit/credit).
+func NewTokenProvider(baseURL, baseURL2, waasBaseURL, username, password, clientID, clientSecret string, authRepo *repository.AuthTokenRepository) *TokenProvider {
 	u2 := baseURL2
 	if u2 == "" {
 		u2 = baseURL
 	}
+	httpClient := &http.Client{Timeout: 30 * time.Second}
+	var waasClient *http.Client
+	if waasBaseURL != "" {
+		waasHost := waasHostFromURL(waasBaseURL)
+		if waasHost != "" {
+			waasClient = &http.Client{
+				Timeout:   45 * time.Second,
+				Transport: newWaasRoundTripper(waasHost, 45*time.Second),
+			}
+		}
+	}
 	return &TokenProvider{
 		baseURL:      baseURL,
 		baseURL2:     u2,
+		waasBaseURL:  waasBaseURL,
 		username:     username,
 		password:     password,
 		clientID:     clientID,
 		clientSecret: clientSecret,
 		authRepo:     authRepo,
-		httpClient:   &http.Client{Timeout: 30 * time.Second},
+		httpClient:   httpClient,
+		waasClient:   waasClient,
 	}
 }
 
@@ -132,4 +148,12 @@ func parseInt(s string, defaultVal int) int {
 		return defaultVal
 	}
 	return n
+}
+
+func waasHostFromURL(baseURL string) string {
+	u, err := url.Parse(baseURL)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	return u.Host
 }

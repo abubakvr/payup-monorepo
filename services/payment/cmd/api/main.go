@@ -40,6 +40,8 @@ func main() {
 
 	repo := repository.NewPaymentRepository(db)
 	walletRepo := repository.NewWalletRepository(db, cfg.EncryptionKey)
+	walletUpgradeRepo := repository.NewWalletUpgradeRepository(db, cfg.EncryptionKey)
+	webhookEventsRepo := repository.NewWebhookEventsRepository(db, cfg.EncryptionKey)
 	transactionRepo := repository.NewTransactionRepository(db, cfg.EncryptionKey)
 	authRepo := repository.NewAuthTokenRepository(db, cfg.EncryptionKey)
 
@@ -62,12 +64,12 @@ func main() {
 
 	var psbProvider *psb.TokenProvider
 	if cfg.PsbBaseURL != "" && cfg.PsbClientID != "" && cfg.EncryptionKey != "" {
-		psbProvider = psb.NewTokenProvider(cfg.PsbBaseURL, cfg.PsbBaseURL2, cfg.PsbUsername, cfg.PsbPassword, cfg.PsbClientID, cfg.PsbClientSecret, authRepo)
+		psbProvider = psb.NewTokenProvider(cfg.PsbBaseURL, cfg.PsbBaseURL2, cfg.PsbWaasBaseURL, cfg.PsbUsername, cfg.PsbPassword, cfg.PsbClientID, cfg.PsbClientSecret, authRepo)
 	} else {
 		log.Printf("payment: 9PSB or encryption key not set; wallet creation disabled")
 	}
 
-	svc := service.NewPaymentService(repo, walletRepo, transactionRepo, producer, producer, kycClient, userClient, psbProvider)
+	svc := service.NewPaymentService(repo, walletRepo, walletUpgradeRepo, webhookEventsRepo, transactionRepo, producer, producer, kycClient, userClient, psbProvider)
 	ctrl := controller.NewPaymentController(svc, cfg)
 
 	r := router.Setup(ctrl)

@@ -1561,6 +1561,91 @@ func (s *KYCService) GetKYCForWallet(userID string) (*dto.WalletKYCData, error) 
 	return out, nil
 }
 
+// idTypeTo9PSB maps KYC id_type to 9PSB wallet upgrade idType (1=NIN/national_id, 2=drivers_license, 3=passport).
+func idTypeTo9PSB(idType string) string {
+	switch strings.ToLower(strings.TrimSpace(idType)) {
+	case "national_id", "nin":
+		return "1"
+	case "drivers_license", "driver's license":
+		return "2"
+	case "passport":
+		return "3"
+	}
+	return "1"
+}
+
+// GetKYCForWalletUpgrade returns KYC data and decrypted image bytes for 9PSB wallet_upgrade_file_upload. Used by Payment service for admin wallet upgrade.
+func (s *KYCService) GetKYCForWalletUpgrade(ctx context.Context, userID string, accountName string) (*dto.WalletUpgradeData, error) {
+	p, err := s.getProfile(userID)
+	if err != nil || p == nil {
+		return nil, err
+	}
+	wallet, err := s.GetKYCForWallet(userID)
+	if err != nil || wallet == nil {
+		return nil, err
+	}
+	out := &dto.WalletUpgradeData{
+		AccountName:     accountName,
+		BVN:             wallet.BVN,
+		Email:           wallet.Email,
+		PhoneNumber:     wallet.PhoneNo,
+		PlaceOfBirth:    wallet.PlaceOfBirth,
+		NIN:             wallet.NationalIdentityNo,
+		Tier:            "3",
+		PEP:             "NO",
+		IDIssueDate:     "",
+		IDExpiryDate:    "",
+	}
+	if out.AccountName == "" && (wallet.OtherNames != "" || wallet.LastName != "") {
+		out.AccountName = strings.TrimSpace(wallet.OtherNames + " " + wallet.LastName)
+	}
+	// Address: city, state, lga, street, house, landmark
+	if addr, _ := s.repo.GetAddressByProfileID(p.ID); addr != nil {
+		out.City, _ = s.repo.Decrypt(addr.CityEncrypted)
+		out.State, _ = s.repo.Decrypt(addr.StateEncrypted)
+		out.LocalGovernment, _ = s.repo.Decrypt(addr.LGAEncrypted)
+		out.StreetName, _ = s.repo.Decrypt(addr.StreetEncrypted)
+		out.HouseNumber, _ = s.repo.Decrypt(addr.HouseNumberEncrypted)
+		out.NearestLandmark, _ = s.repo.Decrypt(addr.LandmarkEncrypted)
+	}
+	// Identity: id_type, id_number (use NIN if national_id). id_issue_date/id_expiry_date not stored — leave empty.
+	if id, _ := s.repo.GetIdentityByProfileID(p.ID); id != nil {
+		out.IDType = idTypeTo9PSB(id.IDType)
+		out.IDNumber = wallet.NationalIdentityNo
+		if out.IDNumber == "" {
+			out.IDNumber = wallet.NinUserID
+		}
+	}
+	// Personal: PEP
+	if pers, _ := s.repo.GetPersonalByProfileID(p.ID); pers != nil {
+		pep, _ := s.repo.Decrypt(pers.PEPStatusEncrypted)
+		if strings.EqualFold(pep, "true") || pep == "1" {
+			out.PEP = "YES"
+		}
+	}
+	// Decrypted images for multipart upload. Customer image: use BVN verification selfie (verified) when available; else identity customer_image.
+	if s.selfieUploader != nil {
+		if b, _, _ := s.GetDecryptedImage(ctx, userID, IdentityImageTypeFront); len(b) > 0 {
+			out.IDFrontImage = b
+		}
+		if b, _, _ := s.GetDecryptedImage(ctx, userID, IdentityImageTypeBack); len(b) > 0 {
+			out.IDBackImage = b
+		}
+		if b, _, _ := s.GetBVNCustomerImage(ctx, userID); len(b) > 0 {
+			out.CustomerImage = b
+		} else if b, _, _ := s.GetDecryptedImage(ctx, userID, IdentityImageTypeCustomer); len(b) > 0 {
+			out.CustomerImage = b
+		}
+		if b, _, _ := s.GetDecryptedImage(ctx, userID, AddressVerificationImageUtilityBill); len(b) > 0 {
+			out.UtilityBillImage = b
+		}
+		if b, _, _ := s.GetDecryptedImage(ctx, userID, AddressVerificationImageProofOfAddress); len(b) > 0 {
+			out.ProofOfAddressImage = b
+		}
+	}
+	return out, nil
+}
+
 // formatDOBFor9PSB returns DD/MM/YYYY. Accepts YYYY-MM-DD or DD/MM/YYYY.
 func formatDOBFor9PSB(dob string) string {
 	dob = strings.TrimSpace(dob)
@@ -1635,6 +1720,10 @@ func (s *KYCService) GetDecryptedImage(ctx context.Context, userID, imageType st
 			objectURL = id.IDBackURL
 		}
 	case IdentityImageTypeCustomer:
+		// Prefer BVN verification selfie (verified) when available; else identity customer_image
+		if b, ct, _ := s.GetBVNCustomerImage(ctx, userID); len(b) > 0 {
+			return b, ct, nil
+		}
 		id, _ := s.repo.GetIdentityByProfileID(p.ID)
 		if id != nil {
 			objectURL = id.CustomerImageURL

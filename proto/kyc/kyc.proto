@@ -12,8 +12,41 @@ service KYCService {
     rpc CountProfiles (CountProfilesRequest) returns (CountProfilesResponse);
     // GetKYCForWallet returns full (unmasked) KYC fields required for 9PSB open_wallet. Used by Payment service only.
     rpc GetKYCForWallet (GetKYCForWalletRequest) returns (GetKYCForWalletResponse);
+    // GetKYCForWalletUpgrade returns KYC data + images for 9PSB wallet_upgrade_file_upload. Used by Payment service for admin wallet upgrade.
+    rpc GetKYCForWalletUpgrade (GetKYCForWalletUpgradeRequest) returns (GetKYCForWalletUpgradeResponse);
     // ApproveKYC sets the user's KYC overall_status to approved and triggers success email. Used by Admin after wallet creation.
     rpc ApproveKYC (ApproveKYCRequest) returns (ApproveKYCResponse);
+}
+
+message GetKYCForWalletUpgradeRequest {
+    string user_id = 1;
+}
+
+message GetKYCForWalletUpgradeResponse {
+    bool found = 1;
+    string account_name = 2;       // e.g. "ZEROSOFT/ADEOLUWASINA DEBORAH"
+    string bvn = 3;
+    string city = 4;
+    string email = 5;
+    string house_number = 6;
+    string id_issue_date = 7;      // YYYY-MM-DD
+    string id_number = 8;
+    string id_type = 9;            // 1=NIN, 2=Driver's license, etc.
+    string local_government = 10;
+    string pep = 11;               // YES or NO
+    string phone_number = 12;
+    string state = 13;
+    string street_name = 14;
+    string tier = 15;              // e.g. "3"
+    string id_expiry_date = 16;    // YYYY-MM-DD
+    string nearest_landmark = 17;
+    string place_of_birth = 18;
+    string nin = 19;
+    bytes id_front_image = 20;     // JPEG/PNG bytes for multipart file
+    bytes id_back_image = 21;
+    bytes customer_image = 22;
+    bytes utility_bill_image = 23;       // for 9PSB wallet upgrade utilityBill field
+    bytes proof_of_address_image = 24;  // for 9PSB Tier 3 proofOfAddressVerification
 }
 
 message ApproveKYCRequest {

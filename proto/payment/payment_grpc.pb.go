@@ -19,9 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PaymentService_Health_FullMethodName       = "/payment.PaymentService/Health"
-	PaymentService_CreateWallet_FullMethodName = "/payment.PaymentService/CreateWallet"
-	PaymentService_ListWallets_FullMethodName  = "/payment.PaymentService/ListWallets"
+	PaymentService_Health_FullMethodName                         = "/payment.PaymentService/Health"
+	PaymentService_CreateWallet_FullMethodName                   = "/payment.PaymentService/CreateWallet"
+	PaymentService_ListWallets_FullMethodName                    = "/payment.PaymentService/ListWallets"
+	PaymentService_DebitCreditWallet_FullMethodName              = "/payment.PaymentService/DebitCreditWallet"
+	PaymentService_GetWaasTransactionHistory_FullMethodName      = "/payment.PaymentService/GetWaasTransactionHistory"
+	PaymentService_GetWaasWalletStatus_FullMethodName            = "/payment.PaymentService/GetWaasWalletStatus"
+	PaymentService_ChangeWalletStatus_FullMethodName             = "/payment.PaymentService/ChangeWalletStatus"
+	PaymentService_SubmitWalletUpgrade_FullMethodName            = "/payment.PaymentService/SubmitWalletUpgrade"
+	PaymentService_ListWalletUpgradeRequests_FullMethodName      = "/payment.PaymentService/ListWalletUpgradeRequests"
+	PaymentService_GetWalletUpgradeRequest_FullMethodName        = "/payment.PaymentService/GetWalletUpgradeRequest"
+	PaymentService_GetWalletUpgradeStatusByUserID_FullMethodName = "/payment.PaymentService/GetWalletUpgradeStatusByUserID"
 )
 
 // PaymentServiceClient is the client API for PaymentService service.
@@ -35,6 +43,22 @@ type PaymentServiceClient interface {
 	CreateWallet(ctx context.Context, in *CreateWalletRequest, opts ...grpc.CallOption) (*CreateWalletResponse, error)
 	// ListWallets returns all wallets with details for admin view (decrypted account_number, full_name, etc.). Paginated.
 	ListWallets(ctx context.Context, in *ListWalletsRequest, opts ...grpc.CallOption) (*ListWalletsResponse, error)
+	// DebitCreditWallet performs an internal debit or credit on the user's wallet (airtime, data, electricity, DSTV, admin adjust). Saves to transactions and ledger.
+	DebitCreditWallet(ctx context.Context, in *DebitCreditWalletRequest, opts ...grpc.CallOption) (*DebitCreditWalletResponse, error)
+	// GetWaasTransactionHistory returns 9PSB WaaS transaction history for the given user's wallet (admin). Date range max 31 days.
+	GetWaasTransactionHistory(ctx context.Context, in *GetWaasTransactionHistoryRequest, opts ...grpc.CallOption) (*GetWaasTransactionHistoryResponse, error)
+	// GetWaasWalletStatus returns 9PSB WaaS wallet status for the given user's wallet (admin).
+	GetWaasWalletStatus(ctx context.Context, in *GetWaasWalletStatusRequest, opts ...grpc.CallOption) (*GetWaasWalletStatusResponse, error)
+	// ChangeWalletStatus changes the user's wallet status via 9PSB WaaS (ACTIVE or SUSPENDED). Updates DB, audit and email via Kafka.
+	ChangeWalletStatus(ctx context.Context, in *ChangeWalletStatusRequest, opts ...grpc.CallOption) (*ChangeWalletStatusResponse, error)
+	// SubmitWalletUpgrade submits a wallet tier upgrade to 9PSB (wallet_upgrade_file_upload). Fetches KYC + images via gRPC, sends multipart to 9PSB, audit + email via Kafka.
+	SubmitWalletUpgrade(ctx context.Context, in *SubmitWalletUpgradeRequest, opts ...grpc.CallOption) (*SubmitWalletUpgradeResponse, error)
+	// ListWalletUpgradeRequests returns wallet upgrade requests for admin (paginated). Newest first.
+	ListWalletUpgradeRequests(ctx context.Context, in *ListWalletUpgradeRequestsRequest, opts ...grpc.CallOption) (*ListWalletUpgradeRequestsResponse, error)
+	// GetWalletUpgradeRequest returns one wallet upgrade request by id (includes request/response payload JSON for admin detail).
+	GetWalletUpgradeRequest(ctx context.Context, in *GetWalletUpgradeRequestRequest, opts ...grpc.CallOption) (*GetWalletUpgradeRequestResponse, error)
+	// GetWalletUpgradeStatusByUserID returns wallet upgrade status for a user (latest request if any). Used by admin GET /users/:id/wallet/upgrade-status.
+	GetWalletUpgradeStatusByUserID(ctx context.Context, in *GetWalletUpgradeStatusByUserIDRequest, opts ...grpc.CallOption) (*GetWalletUpgradeStatusByUserIDResponse, error)
 }
 
 type paymentServiceClient struct {
@@ -75,6 +99,86 @@ func (c *paymentServiceClient) ListWallets(ctx context.Context, in *ListWalletsR
 	return out, nil
 }
 
+func (c *paymentServiceClient) DebitCreditWallet(ctx context.Context, in *DebitCreditWalletRequest, opts ...grpc.CallOption) (*DebitCreditWalletResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DebitCreditWalletResponse)
+	err := c.cc.Invoke(ctx, PaymentService_DebitCreditWallet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *paymentServiceClient) GetWaasTransactionHistory(ctx context.Context, in *GetWaasTransactionHistoryRequest, opts ...grpc.CallOption) (*GetWaasTransactionHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetWaasTransactionHistoryResponse)
+	err := c.cc.Invoke(ctx, PaymentService_GetWaasTransactionHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *paymentServiceClient) GetWaasWalletStatus(ctx context.Context, in *GetWaasWalletStatusRequest, opts ...grpc.CallOption) (*GetWaasWalletStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetWaasWalletStatusResponse)
+	err := c.cc.Invoke(ctx, PaymentService_GetWaasWalletStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *paymentServiceClient) ChangeWalletStatus(ctx context.Context, in *ChangeWalletStatusRequest, opts ...grpc.CallOption) (*ChangeWalletStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ChangeWalletStatusResponse)
+	err := c.cc.Invoke(ctx, PaymentService_ChangeWalletStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *paymentServiceClient) SubmitWalletUpgrade(ctx context.Context, in *SubmitWalletUpgradeRequest, opts ...grpc.CallOption) (*SubmitWalletUpgradeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SubmitWalletUpgradeResponse)
+	err := c.cc.Invoke(ctx, PaymentService_SubmitWalletUpgrade_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *paymentServiceClient) ListWalletUpgradeRequests(ctx context.Context, in *ListWalletUpgradeRequestsRequest, opts ...grpc.CallOption) (*ListWalletUpgradeRequestsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListWalletUpgradeRequestsResponse)
+	err := c.cc.Invoke(ctx, PaymentService_ListWalletUpgradeRequests_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *paymentServiceClient) GetWalletUpgradeRequest(ctx context.Context, in *GetWalletUpgradeRequestRequest, opts ...grpc.CallOption) (*GetWalletUpgradeRequestResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetWalletUpgradeRequestResponse)
+	err := c.cc.Invoke(ctx, PaymentService_GetWalletUpgradeRequest_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *paymentServiceClient) GetWalletUpgradeStatusByUserID(ctx context.Context, in *GetWalletUpgradeStatusByUserIDRequest, opts ...grpc.CallOption) (*GetWalletUpgradeStatusByUserIDResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetWalletUpgradeStatusByUserIDResponse)
+	err := c.cc.Invoke(ctx, PaymentService_GetWalletUpgradeStatusByUserID_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PaymentServiceServer is the server API for PaymentService service.
 // All implementations must embed UnimplementedPaymentServiceServer
 // for forward compatibility.
@@ -86,6 +190,22 @@ type PaymentServiceServer interface {
 	CreateWallet(context.Context, *CreateWalletRequest) (*CreateWalletResponse, error)
 	// ListWallets returns all wallets with details for admin view (decrypted account_number, full_name, etc.). Paginated.
 	ListWallets(context.Context, *ListWalletsRequest) (*ListWalletsResponse, error)
+	// DebitCreditWallet performs an internal debit or credit on the user's wallet (airtime, data, electricity, DSTV, admin adjust). Saves to transactions and ledger.
+	DebitCreditWallet(context.Context, *DebitCreditWalletRequest) (*DebitCreditWalletResponse, error)
+	// GetWaasTransactionHistory returns 9PSB WaaS transaction history for the given user's wallet (admin). Date range max 31 days.
+	GetWaasTransactionHistory(context.Context, *GetWaasTransactionHistoryRequest) (*GetWaasTransactionHistoryResponse, error)
+	// GetWaasWalletStatus returns 9PSB WaaS wallet status for the given user's wallet (admin).
+	GetWaasWalletStatus(context.Context, *GetWaasWalletStatusRequest) (*GetWaasWalletStatusResponse, error)
+	// ChangeWalletStatus changes the user's wallet status via 9PSB WaaS (ACTIVE or SUSPENDED). Updates DB, audit and email via Kafka.
+	ChangeWalletStatus(context.Context, *ChangeWalletStatusRequest) (*ChangeWalletStatusResponse, error)
+	// SubmitWalletUpgrade submits a wallet tier upgrade to 9PSB (wallet_upgrade_file_upload). Fetches KYC + images via gRPC, sends multipart to 9PSB, audit + email via Kafka.
+	SubmitWalletUpgrade(context.Context, *SubmitWalletUpgradeRequest) (*SubmitWalletUpgradeResponse, error)
+	// ListWalletUpgradeRequests returns wallet upgrade requests for admin (paginated). Newest first.
+	ListWalletUpgradeRequests(context.Context, *ListWalletUpgradeRequestsRequest) (*ListWalletUpgradeRequestsResponse, error)
+	// GetWalletUpgradeRequest returns one wallet upgrade request by id (includes request/response payload JSON for admin detail).
+	GetWalletUpgradeRequest(context.Context, *GetWalletUpgradeRequestRequest) (*GetWalletUpgradeRequestResponse, error)
+	// GetWalletUpgradeStatusByUserID returns wallet upgrade status for a user (latest request if any). Used by admin GET /users/:id/wallet/upgrade-status.
+	GetWalletUpgradeStatusByUserID(context.Context, *GetWalletUpgradeStatusByUserIDRequest) (*GetWalletUpgradeStatusByUserIDResponse, error)
 	mustEmbedUnimplementedPaymentServiceServer()
 }
 
@@ -104,6 +224,30 @@ func (UnimplementedPaymentServiceServer) CreateWallet(context.Context, *CreateWa
 }
 func (UnimplementedPaymentServiceServer) ListWallets(context.Context, *ListWalletsRequest) (*ListWalletsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListWallets not implemented")
+}
+func (UnimplementedPaymentServiceServer) DebitCreditWallet(context.Context, *DebitCreditWalletRequest) (*DebitCreditWalletResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DebitCreditWallet not implemented")
+}
+func (UnimplementedPaymentServiceServer) GetWaasTransactionHistory(context.Context, *GetWaasTransactionHistoryRequest) (*GetWaasTransactionHistoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetWaasTransactionHistory not implemented")
+}
+func (UnimplementedPaymentServiceServer) GetWaasWalletStatus(context.Context, *GetWaasWalletStatusRequest) (*GetWaasWalletStatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetWaasWalletStatus not implemented")
+}
+func (UnimplementedPaymentServiceServer) ChangeWalletStatus(context.Context, *ChangeWalletStatusRequest) (*ChangeWalletStatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ChangeWalletStatus not implemented")
+}
+func (UnimplementedPaymentServiceServer) SubmitWalletUpgrade(context.Context, *SubmitWalletUpgradeRequest) (*SubmitWalletUpgradeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SubmitWalletUpgrade not implemented")
+}
+func (UnimplementedPaymentServiceServer) ListWalletUpgradeRequests(context.Context, *ListWalletUpgradeRequestsRequest) (*ListWalletUpgradeRequestsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListWalletUpgradeRequests not implemented")
+}
+func (UnimplementedPaymentServiceServer) GetWalletUpgradeRequest(context.Context, *GetWalletUpgradeRequestRequest) (*GetWalletUpgradeRequestResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetWalletUpgradeRequest not implemented")
+}
+func (UnimplementedPaymentServiceServer) GetWalletUpgradeStatusByUserID(context.Context, *GetWalletUpgradeStatusByUserIDRequest) (*GetWalletUpgradeStatusByUserIDResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetWalletUpgradeStatusByUserID not implemented")
 }
 func (UnimplementedPaymentServiceServer) mustEmbedUnimplementedPaymentServiceServer() {}
 func (UnimplementedPaymentServiceServer) testEmbeddedByValue()                        {}
@@ -180,6 +324,150 @@ func _PaymentService_ListWallets_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PaymentService_DebitCreditWallet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DebitCreditWalletRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PaymentServiceServer).DebitCreditWallet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PaymentService_DebitCreditWallet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PaymentServiceServer).DebitCreditWallet(ctx, req.(*DebitCreditWalletRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PaymentService_GetWaasTransactionHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWaasTransactionHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PaymentServiceServer).GetWaasTransactionHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PaymentService_GetWaasTransactionHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PaymentServiceServer).GetWaasTransactionHistory(ctx, req.(*GetWaasTransactionHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PaymentService_GetWaasWalletStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWaasWalletStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PaymentServiceServer).GetWaasWalletStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PaymentService_GetWaasWalletStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PaymentServiceServer).GetWaasWalletStatus(ctx, req.(*GetWaasWalletStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PaymentService_ChangeWalletStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangeWalletStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PaymentServiceServer).ChangeWalletStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PaymentService_ChangeWalletStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PaymentServiceServer).ChangeWalletStatus(ctx, req.(*ChangeWalletStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PaymentService_SubmitWalletUpgrade_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubmitWalletUpgradeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PaymentServiceServer).SubmitWalletUpgrade(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PaymentService_SubmitWalletUpgrade_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PaymentServiceServer).SubmitWalletUpgrade(ctx, req.(*SubmitWalletUpgradeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PaymentService_ListWalletUpgradeRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWalletUpgradeRequestsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PaymentServiceServer).ListWalletUpgradeRequests(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PaymentService_ListWalletUpgradeRequests_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PaymentServiceServer).ListWalletUpgradeRequests(ctx, req.(*ListWalletUpgradeRequestsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PaymentService_GetWalletUpgradeRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWalletUpgradeRequestRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PaymentServiceServer).GetWalletUpgradeRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PaymentService_GetWalletUpgradeRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PaymentServiceServer).GetWalletUpgradeRequest(ctx, req.(*GetWalletUpgradeRequestRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PaymentService_GetWalletUpgradeStatusByUserID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWalletUpgradeStatusByUserIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PaymentServiceServer).GetWalletUpgradeStatusByUserID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PaymentService_GetWalletUpgradeStatusByUserID_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PaymentServiceServer).GetWalletUpgradeStatusByUserID(ctx, req.(*GetWalletUpgradeStatusByUserIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PaymentService_ServiceDesc is the grpc.ServiceDesc for PaymentService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -198,6 +486,38 @@ var PaymentService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListWallets",
 			Handler:    _PaymentService_ListWallets_Handler,
+		},
+		{
+			MethodName: "DebitCreditWallet",
+			Handler:    _PaymentService_DebitCreditWallet_Handler,
+		},
+		{
+			MethodName: "GetWaasTransactionHistory",
+			Handler:    _PaymentService_GetWaasTransactionHistory_Handler,
+		},
+		{
+			MethodName: "GetWaasWalletStatus",
+			Handler:    _PaymentService_GetWaasWalletStatus_Handler,
+		},
+		{
+			MethodName: "ChangeWalletStatus",
+			Handler:    _PaymentService_ChangeWalletStatus_Handler,
+		},
+		{
+			MethodName: "SubmitWalletUpgrade",
+			Handler:    _PaymentService_SubmitWalletUpgrade_Handler,
+		},
+		{
+			MethodName: "ListWalletUpgradeRequests",
+			Handler:    _PaymentService_ListWalletUpgradeRequests_Handler,
+		},
+		{
+			MethodName: "GetWalletUpgradeRequest",
+			Handler:    _PaymentService_GetWalletUpgradeRequest_Handler,
+		},
+		{
+			MethodName: "GetWalletUpgradeStatusByUserID",
+			Handler:    _PaymentService_GetWalletUpgradeStatusByUserID_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

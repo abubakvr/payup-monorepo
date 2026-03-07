@@ -11,6 +11,87 @@ service PaymentService {
   rpc CreateWallet (CreateWalletRequest) returns (CreateWalletResponse);
   // ListWallets returns all wallets with details for admin view (decrypted account_number, full_name, etc.). Paginated.
   rpc ListWallets (ListWalletsRequest) returns (ListWalletsResponse);
+  // DebitCreditWallet performs an internal debit or credit on the user's wallet (airtime, data, electricity, DSTV, admin adjust). Saves to transactions and ledger.
+  rpc DebitCreditWallet (DebitCreditWalletRequest) returns (DebitCreditWalletResponse);
+  // GetWaasTransactionHistory returns 9PSB WaaS transaction history for the given user's wallet (admin). Date range max 31 days.
+  rpc GetWaasTransactionHistory (GetWaasTransactionHistoryRequest) returns (GetWaasTransactionHistoryResponse);
+  // GetWaasWalletStatus returns 9PSB WaaS wallet status for the given user's wallet (admin).
+  rpc GetWaasWalletStatus (GetWaasWalletStatusRequest) returns (GetWaasWalletStatusResponse);
+  // ChangeWalletStatus changes the user's wallet status via 9PSB WaaS (ACTIVE or SUSPENDED). Updates DB, audit and email via Kafka.
+  rpc ChangeWalletStatus (ChangeWalletStatusRequest) returns (ChangeWalletStatusResponse);
+  // SubmitWalletUpgrade submits a wallet tier upgrade to 9PSB (wallet_upgrade_file_upload). Fetches KYC + images via gRPC, sends multipart to 9PSB, audit + email via Kafka.
+  rpc SubmitWalletUpgrade (SubmitWalletUpgradeRequest) returns (SubmitWalletUpgradeResponse);
+  // ListWalletUpgradeRequests returns wallet upgrade requests for admin (paginated). Newest first.
+  rpc ListWalletUpgradeRequests (ListWalletUpgradeRequestsRequest) returns (ListWalletUpgradeRequestsResponse);
+  // GetWalletUpgradeRequest returns one wallet upgrade request by id (includes request/response payload JSON for admin detail).
+  rpc GetWalletUpgradeRequest (GetWalletUpgradeRequestRequest) returns (GetWalletUpgradeRequestResponse);
+  // GetWalletUpgradeStatusByUserID returns wallet upgrade status for a user (latest request if any). Used by admin GET /users/:id/wallet/upgrade-status.
+  rpc GetWalletUpgradeStatusByUserID (GetWalletUpgradeStatusByUserIDRequest) returns (GetWalletUpgradeStatusByUserIDResponse);
+}
+
+message SubmitWalletUpgradeRequest {
+  string user_id = 1;       // wallet owner
+  string initiated_by = 2; // admin user id
+}
+
+message SubmitWalletUpgradeResponse {
+  bool success = 1;
+  string message = 2;       // e.g. "Request submitted successfully"
+  string error_message = 3;
+}
+
+message ListWalletUpgradeRequestsRequest {
+  int32 limit = 1;   // default 50, max 100
+  int32 offset = 2;  // default 0
+}
+
+message WalletUpgradeRequestItem {
+  string id = 1;
+  string wallet_id = 2;
+  string user_id = 3;
+  string upgrade_ref = 4;
+  string tier_from = 5;
+  string tier_to = 6;
+  string upgrade_method = 7;
+  string initiation_status = 8;
+  string final_status = 9;
+  string initiated_by = 10;
+  string submitted_at = 11;   // RFC3339
+  string finalized_at = 12;   // RFC3339
+  string created_at = 13;
+}
+
+message ListWalletUpgradeRequestsResponse {
+  repeated WalletUpgradeRequestItem requests = 1;
+}
+
+message GetWalletUpgradeRequestRequest {
+  string id = 1;  // upgrade request UUID
+}
+
+message GetWalletUpgradeRequestResponse {
+  bool found = 1;
+  WalletUpgradeRequestItem item = 2;
+  string request_payload_json = 3;   // decrypted request (form fields, no images)
+  string response_payload_json = 4; // decrypted 9PSB response
+}
+
+message GetWalletUpgradeStatusByUserIDRequest {
+  string user_id = 1;
+}
+
+// UpgradeStatusFrom9PSB is the 9PSB upgrade_status API response (source of truth for user/admin).
+message UpgradeStatusFrom9PSB {
+  string status = 1;        // "SUCCESS" or "FAILED"
+  string message = 2;       // e.g. "Status request successful"
+  string data_message = 3;   // e.g. "Pending", "No record found"
+  string data_status = 4;   // e.g. "Successful", "Failed"
+}
+
+message GetWalletUpgradeStatusByUserIDResponse {
+  bool has_wallet = 1;
+  UpgradeStatusFrom9PSB upgrade_status = 2;  // from 9PSB upgrade_status API; nil if no wallet
+  WalletUpgradeRequestItem latest = 3;       // our DB row for reference (optional)
 }
 
 message HealthRequest {}
@@ -55,4 +136,68 @@ message WalletDetail {
 
 message ListWalletsResponse {
   repeated WalletDetail wallets = 1;
+}
+
+message DebitCreditWalletRequest {
+  string user_id = 1;       // wallet owner
+  double amount = 2;       // must be positive
+  bool is_credit = 3;      // true = credit (add), false = debit (deduct)
+  string narration = 4;    // e.g. "Airtime - 08012345678", "Data bundle", "Electricity", "DSTV", "Admin credit"
+  string initiated_by = 5; // admin user id or "system"
+}
+
+message DebitCreditWalletResponse {
+  bool success = 1;
+  string transaction_ref = 2;
+  string error_message = 3;
+}
+
+message GetWaasTransactionHistoryRequest {
+  string user_id = 1;
+  string from_date = 2;  // YYYY-MM-DD
+  string to_date = 3;    // YYYY-MM-DD (max 31 days from from_date)
+  int32 limit = 4;      // default 20
+}
+
+message WaasTransactionItem {
+  string transaction_date = 1;
+  string transaction_date_string = 2;
+  double amount = 3;
+  string narration = 4;
+  double balance = 5;
+  string reference_id = 6;
+  string debit = 7;
+  string credit = 8;
+  string unique_identifier = 9;
+  bool is_reversed = 10;
+}
+
+message GetWaasTransactionHistoryResponse {
+  bool success = 1;
+  string message = 2;
+  repeated WaasTransactionItem transactions = 3;
+  string error_message = 4;
+}
+
+message GetWaasWalletStatusRequest {
+  string user_id = 1;
+}
+
+message GetWaasWalletStatusResponse {
+  bool success = 1;
+  string wallet_status = 2;  // e.g. ACTIVE
+  string response_code = 3;
+  string error_message = 4;
+}
+
+message ChangeWalletStatusRequest {
+  string user_id = 1;
+  string account_status = 2;  // "ACTIVE" or "SUSPENDED"
+  string initiated_by = 3;     // admin user id
+}
+
+message ChangeWalletStatusResponse {
+  bool success = 1;
+  string new_wallet_status = 2;  // e.g. ACTIVE, SUSPENDED
+  string error_message = 3;
 }

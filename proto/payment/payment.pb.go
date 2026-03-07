@@ -21,6 +21,639 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type SubmitWalletUpgradeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`                // wallet owner
+	InitiatedBy   string                 `protobuf:"bytes,2,opt,name=initiated_by,json=initiatedBy,proto3" json:"initiated_by,omitempty"` // admin user id
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubmitWalletUpgradeRequest) Reset() {
+	*x = SubmitWalletUpgradeRequest{}
+	mi := &file_proto_payment_payment_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubmitWalletUpgradeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubmitWalletUpgradeRequest) ProtoMessage() {}
+
+func (x *SubmitWalletUpgradeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubmitWalletUpgradeRequest.ProtoReflect.Descriptor instead.
+func (*SubmitWalletUpgradeRequest) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *SubmitWalletUpgradeRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *SubmitWalletUpgradeRequest) GetInitiatedBy() string {
+	if x != nil {
+		return x.InitiatedBy
+	}
+	return ""
+}
+
+type SubmitWalletUpgradeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"` // e.g. "Request submitted successfully"
+	ErrorMessage  string                 `protobuf:"bytes,3,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubmitWalletUpgradeResponse) Reset() {
+	*x = SubmitWalletUpgradeResponse{}
+	mi := &file_proto_payment_payment_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubmitWalletUpgradeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubmitWalletUpgradeResponse) ProtoMessage() {}
+
+func (x *SubmitWalletUpgradeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubmitWalletUpgradeResponse.ProtoReflect.Descriptor instead.
+func (*SubmitWalletUpgradeResponse) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *SubmitWalletUpgradeResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *SubmitWalletUpgradeResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *SubmitWalletUpgradeResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+type ListWalletUpgradeRequestsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`   // default 50, max 100
+	Offset        int32                  `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"` // default 0
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWalletUpgradeRequestsRequest) Reset() {
+	*x = ListWalletUpgradeRequestsRequest{}
+	mi := &file_proto_payment_payment_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWalletUpgradeRequestsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWalletUpgradeRequestsRequest) ProtoMessage() {}
+
+func (x *ListWalletUpgradeRequestsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWalletUpgradeRequestsRequest.ProtoReflect.Descriptor instead.
+func (*ListWalletUpgradeRequestsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ListWalletUpgradeRequestsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListWalletUpgradeRequestsRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+type WalletUpgradeRequestItem struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	WalletId         string                 `protobuf:"bytes,2,opt,name=wallet_id,json=walletId,proto3" json:"wallet_id,omitempty"`
+	UserId           string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UpgradeRef       string                 `protobuf:"bytes,4,opt,name=upgrade_ref,json=upgradeRef,proto3" json:"upgrade_ref,omitempty"`
+	TierFrom         string                 `protobuf:"bytes,5,opt,name=tier_from,json=tierFrom,proto3" json:"tier_from,omitempty"`
+	TierTo           string                 `protobuf:"bytes,6,opt,name=tier_to,json=tierTo,proto3" json:"tier_to,omitempty"`
+	UpgradeMethod    string                 `protobuf:"bytes,7,opt,name=upgrade_method,json=upgradeMethod,proto3" json:"upgrade_method,omitempty"`
+	InitiationStatus string                 `protobuf:"bytes,8,opt,name=initiation_status,json=initiationStatus,proto3" json:"initiation_status,omitempty"`
+	FinalStatus      string                 `protobuf:"bytes,9,opt,name=final_status,json=finalStatus,proto3" json:"final_status,omitempty"`
+	InitiatedBy      string                 `protobuf:"bytes,10,opt,name=initiated_by,json=initiatedBy,proto3" json:"initiated_by,omitempty"`
+	SubmittedAt      string                 `protobuf:"bytes,11,opt,name=submitted_at,json=submittedAt,proto3" json:"submitted_at,omitempty"` // RFC3339
+	FinalizedAt      string                 `protobuf:"bytes,12,opt,name=finalized_at,json=finalizedAt,proto3" json:"finalized_at,omitempty"` // RFC3339
+	CreatedAt        string                 `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *WalletUpgradeRequestItem) Reset() {
+	*x = WalletUpgradeRequestItem{}
+	mi := &file_proto_payment_payment_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WalletUpgradeRequestItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WalletUpgradeRequestItem) ProtoMessage() {}
+
+func (x *WalletUpgradeRequestItem) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WalletUpgradeRequestItem.ProtoReflect.Descriptor instead.
+func (*WalletUpgradeRequestItem) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *WalletUpgradeRequestItem) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *WalletUpgradeRequestItem) GetWalletId() string {
+	if x != nil {
+		return x.WalletId
+	}
+	return ""
+}
+
+func (x *WalletUpgradeRequestItem) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *WalletUpgradeRequestItem) GetUpgradeRef() string {
+	if x != nil {
+		return x.UpgradeRef
+	}
+	return ""
+}
+
+func (x *WalletUpgradeRequestItem) GetTierFrom() string {
+	if x != nil {
+		return x.TierFrom
+	}
+	return ""
+}
+
+func (x *WalletUpgradeRequestItem) GetTierTo() string {
+	if x != nil {
+		return x.TierTo
+	}
+	return ""
+}
+
+func (x *WalletUpgradeRequestItem) GetUpgradeMethod() string {
+	if x != nil {
+		return x.UpgradeMethod
+	}
+	return ""
+}
+
+func (x *WalletUpgradeRequestItem) GetInitiationStatus() string {
+	if x != nil {
+		return x.InitiationStatus
+	}
+	return ""
+}
+
+func (x *WalletUpgradeRequestItem) GetFinalStatus() string {
+	if x != nil {
+		return x.FinalStatus
+	}
+	return ""
+}
+
+func (x *WalletUpgradeRequestItem) GetInitiatedBy() string {
+	if x != nil {
+		return x.InitiatedBy
+	}
+	return ""
+}
+
+func (x *WalletUpgradeRequestItem) GetSubmittedAt() string {
+	if x != nil {
+		return x.SubmittedAt
+	}
+	return ""
+}
+
+func (x *WalletUpgradeRequestItem) GetFinalizedAt() string {
+	if x != nil {
+		return x.FinalizedAt
+	}
+	return ""
+}
+
+func (x *WalletUpgradeRequestItem) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+type ListWalletUpgradeRequestsResponse struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Requests      []*WalletUpgradeRequestItem `protobuf:"bytes,1,rep,name=requests,proto3" json:"requests,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWalletUpgradeRequestsResponse) Reset() {
+	*x = ListWalletUpgradeRequestsResponse{}
+	mi := &file_proto_payment_payment_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWalletUpgradeRequestsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWalletUpgradeRequestsResponse) ProtoMessage() {}
+
+func (x *ListWalletUpgradeRequestsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWalletUpgradeRequestsResponse.ProtoReflect.Descriptor instead.
+func (*ListWalletUpgradeRequestsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ListWalletUpgradeRequestsResponse) GetRequests() []*WalletUpgradeRequestItem {
+	if x != nil {
+		return x.Requests
+	}
+	return nil
+}
+
+type GetWalletUpgradeRequestRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // upgrade request UUID
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWalletUpgradeRequestRequest) Reset() {
+	*x = GetWalletUpgradeRequestRequest{}
+	mi := &file_proto_payment_payment_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWalletUpgradeRequestRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWalletUpgradeRequestRequest) ProtoMessage() {}
+
+func (x *GetWalletUpgradeRequestRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWalletUpgradeRequestRequest.ProtoReflect.Descriptor instead.
+func (*GetWalletUpgradeRequestRequest) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GetWalletUpgradeRequestRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type GetWalletUpgradeRequestResponse struct {
+	state               protoimpl.MessageState    `protogen:"open.v1"`
+	Found               bool                      `protobuf:"varint,1,opt,name=found,proto3" json:"found,omitempty"`
+	Item                *WalletUpgradeRequestItem `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
+	RequestPayloadJson  string                    `protobuf:"bytes,3,opt,name=request_payload_json,json=requestPayloadJson,proto3" json:"request_payload_json,omitempty"`    // decrypted request (form fields, no images)
+	ResponsePayloadJson string                    `protobuf:"bytes,4,opt,name=response_payload_json,json=responsePayloadJson,proto3" json:"response_payload_json,omitempty"` // decrypted 9PSB response
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *GetWalletUpgradeRequestResponse) Reset() {
+	*x = GetWalletUpgradeRequestResponse{}
+	mi := &file_proto_payment_payment_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWalletUpgradeRequestResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWalletUpgradeRequestResponse) ProtoMessage() {}
+
+func (x *GetWalletUpgradeRequestResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWalletUpgradeRequestResponse.ProtoReflect.Descriptor instead.
+func (*GetWalletUpgradeRequestResponse) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GetWalletUpgradeRequestResponse) GetFound() bool {
+	if x != nil {
+		return x.Found
+	}
+	return false
+}
+
+func (x *GetWalletUpgradeRequestResponse) GetItem() *WalletUpgradeRequestItem {
+	if x != nil {
+		return x.Item
+	}
+	return nil
+}
+
+func (x *GetWalletUpgradeRequestResponse) GetRequestPayloadJson() string {
+	if x != nil {
+		return x.RequestPayloadJson
+	}
+	return ""
+}
+
+func (x *GetWalletUpgradeRequestResponse) GetResponsePayloadJson() string {
+	if x != nil {
+		return x.ResponsePayloadJson
+	}
+	return ""
+}
+
+type GetWalletUpgradeStatusByUserIDRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWalletUpgradeStatusByUserIDRequest) Reset() {
+	*x = GetWalletUpgradeStatusByUserIDRequest{}
+	mi := &file_proto_payment_payment_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWalletUpgradeStatusByUserIDRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWalletUpgradeStatusByUserIDRequest) ProtoMessage() {}
+
+func (x *GetWalletUpgradeStatusByUserIDRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWalletUpgradeStatusByUserIDRequest.ProtoReflect.Descriptor instead.
+func (*GetWalletUpgradeStatusByUserIDRequest) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GetWalletUpgradeStatusByUserIDRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+// UpgradeStatusFrom9PSB is the 9PSB upgrade_status API response (source of truth for user/admin).
+type UpgradeStatusFrom9PSB struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`                              // "SUCCESS" or "FAILED"
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`                            // e.g. "Status request successful"
+	DataMessage   string                 `protobuf:"bytes,3,opt,name=data_message,json=dataMessage,proto3" json:"data_message,omitempty"` // e.g. "Pending", "No record found"
+	DataStatus    string                 `protobuf:"bytes,4,opt,name=data_status,json=dataStatus,proto3" json:"data_status,omitempty"`    // e.g. "Successful", "Failed"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpgradeStatusFrom9PSB) Reset() {
+	*x = UpgradeStatusFrom9PSB{}
+	mi := &file_proto_payment_payment_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpgradeStatusFrom9PSB) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpgradeStatusFrom9PSB) ProtoMessage() {}
+
+func (x *UpgradeStatusFrom9PSB) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpgradeStatusFrom9PSB.ProtoReflect.Descriptor instead.
+func (*UpgradeStatusFrom9PSB) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *UpgradeStatusFrom9PSB) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *UpgradeStatusFrom9PSB) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *UpgradeStatusFrom9PSB) GetDataMessage() string {
+	if x != nil {
+		return x.DataMessage
+	}
+	return ""
+}
+
+func (x *UpgradeStatusFrom9PSB) GetDataStatus() string {
+	if x != nil {
+		return x.DataStatus
+	}
+	return ""
+}
+
+type GetWalletUpgradeStatusByUserIDResponse struct {
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	HasWallet     bool                      `protobuf:"varint,1,opt,name=has_wallet,json=hasWallet,proto3" json:"has_wallet,omitempty"`
+	UpgradeStatus *UpgradeStatusFrom9PSB    `protobuf:"bytes,2,opt,name=upgrade_status,json=upgradeStatus,proto3" json:"upgrade_status,omitempty"` // from 9PSB upgrade_status API; nil if no wallet
+	Latest        *WalletUpgradeRequestItem `protobuf:"bytes,3,opt,name=latest,proto3" json:"latest,omitempty"`                                    // our DB row for reference (optional)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWalletUpgradeStatusByUserIDResponse) Reset() {
+	*x = GetWalletUpgradeStatusByUserIDResponse{}
+	mi := &file_proto_payment_payment_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWalletUpgradeStatusByUserIDResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWalletUpgradeStatusByUserIDResponse) ProtoMessage() {}
+
+func (x *GetWalletUpgradeStatusByUserIDResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWalletUpgradeStatusByUserIDResponse.ProtoReflect.Descriptor instead.
+func (*GetWalletUpgradeStatusByUserIDResponse) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetWalletUpgradeStatusByUserIDResponse) GetHasWallet() bool {
+	if x != nil {
+		return x.HasWallet
+	}
+	return false
+}
+
+func (x *GetWalletUpgradeStatusByUserIDResponse) GetUpgradeStatus() *UpgradeStatusFrom9PSB {
+	if x != nil {
+		return x.UpgradeStatus
+	}
+	return nil
+}
+
+func (x *GetWalletUpgradeStatusByUserIDResponse) GetLatest() *WalletUpgradeRequestItem {
+	if x != nil {
+		return x.Latest
+	}
+	return nil
+}
+
 type HealthRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -29,7 +662,7 @@ type HealthRequest struct {
 
 func (x *HealthRequest) Reset() {
 	*x = HealthRequest{}
-	mi := &file_proto_payment_payment_proto_msgTypes[0]
+	mi := &file_proto_payment_payment_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -41,7 +674,7 @@ func (x *HealthRequest) String() string {
 func (*HealthRequest) ProtoMessage() {}
 
 func (x *HealthRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_payment_payment_proto_msgTypes[0]
+	mi := &file_proto_payment_payment_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -54,7 +687,7 @@ func (x *HealthRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthRequest.ProtoReflect.Descriptor instead.
 func (*HealthRequest) Descriptor() ([]byte, []int) {
-	return file_proto_payment_payment_proto_rawDescGZIP(), []int{0}
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{10}
 }
 
 type HealthResponse struct {
@@ -66,7 +699,7 @@ type HealthResponse struct {
 
 func (x *HealthResponse) Reset() {
 	*x = HealthResponse{}
-	mi := &file_proto_payment_payment_proto_msgTypes[1]
+	mi := &file_proto_payment_payment_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -78,7 +711,7 @@ func (x *HealthResponse) String() string {
 func (*HealthResponse) ProtoMessage() {}
 
 func (x *HealthResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_payment_payment_proto_msgTypes[1]
+	mi := &file_proto_payment_payment_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -91,7 +724,7 @@ func (x *HealthResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthResponse.ProtoReflect.Descriptor instead.
 func (*HealthResponse) Descriptor() ([]byte, []int) {
-	return file_proto_payment_payment_proto_rawDescGZIP(), []int{1}
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *HealthResponse) GetStatus() string {
@@ -110,7 +743,7 @@ type CreateWalletRequest struct {
 
 func (x *CreateWalletRequest) Reset() {
 	*x = CreateWalletRequest{}
-	mi := &file_proto_payment_payment_proto_msgTypes[2]
+	mi := &file_proto_payment_payment_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -122,7 +755,7 @@ func (x *CreateWalletRequest) String() string {
 func (*CreateWalletRequest) ProtoMessage() {}
 
 func (x *CreateWalletRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_payment_payment_proto_msgTypes[2]
+	mi := &file_proto_payment_payment_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -135,7 +768,7 @@ func (x *CreateWalletRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateWalletRequest.ProtoReflect.Descriptor instead.
 func (*CreateWalletRequest) Descriptor() ([]byte, []int) {
-	return file_proto_payment_payment_proto_rawDescGZIP(), []int{2}
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CreateWalletRequest) GetUserId() string {
@@ -156,7 +789,7 @@ type CreateWalletResponse struct {
 
 func (x *CreateWalletResponse) Reset() {
 	*x = CreateWalletResponse{}
-	mi := &file_proto_payment_payment_proto_msgTypes[3]
+	mi := &file_proto_payment_payment_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -168,7 +801,7 @@ func (x *CreateWalletResponse) String() string {
 func (*CreateWalletResponse) ProtoMessage() {}
 
 func (x *CreateWalletResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_payment_payment_proto_msgTypes[3]
+	mi := &file_proto_payment_payment_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -181,7 +814,7 @@ func (x *CreateWalletResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateWalletResponse.ProtoReflect.Descriptor instead.
 func (*CreateWalletResponse) Descriptor() ([]byte, []int) {
-	return file_proto_payment_payment_proto_rawDescGZIP(), []int{3}
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *CreateWalletResponse) GetSuccess() bool {
@@ -215,7 +848,7 @@ type ListWalletsRequest struct {
 
 func (x *ListWalletsRequest) Reset() {
 	*x = ListWalletsRequest{}
-	mi := &file_proto_payment_payment_proto_msgTypes[4]
+	mi := &file_proto_payment_payment_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -227,7 +860,7 @@ func (x *ListWalletsRequest) String() string {
 func (*ListWalletsRequest) ProtoMessage() {}
 
 func (x *ListWalletsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_payment_payment_proto_msgTypes[4]
+	mi := &file_proto_payment_payment_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -240,7 +873,7 @@ func (x *ListWalletsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWalletsRequest.ProtoReflect.Descriptor instead.
 func (*ListWalletsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_payment_payment_proto_rawDescGZIP(), []int{4}
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListWalletsRequest) GetLimit() int32 {
@@ -281,7 +914,7 @@ type WalletDetail struct {
 
 func (x *WalletDetail) Reset() {
 	*x = WalletDetail{}
-	mi := &file_proto_payment_payment_proto_msgTypes[5]
+	mi := &file_proto_payment_payment_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -293,7 +926,7 @@ func (x *WalletDetail) String() string {
 func (*WalletDetail) ProtoMessage() {}
 
 func (x *WalletDetail) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_payment_payment_proto_msgTypes[5]
+	mi := &file_proto_payment_payment_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -306,7 +939,7 @@ func (x *WalletDetail) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WalletDetail.ProtoReflect.Descriptor instead.
 func (*WalletDetail) Descriptor() ([]byte, []int) {
-	return file_proto_payment_payment_proto_rawDescGZIP(), []int{5}
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *WalletDetail) GetId() string {
@@ -430,7 +1063,7 @@ type ListWalletsResponse struct {
 
 func (x *ListWalletsResponse) Reset() {
 	*x = ListWalletsResponse{}
-	mi := &file_proto_payment_payment_proto_msgTypes[6]
+	mi := &file_proto_payment_payment_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -442,7 +1075,7 @@ func (x *ListWalletsResponse) String() string {
 func (*ListWalletsResponse) ProtoMessage() {}
 
 func (x *ListWalletsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_payment_payment_proto_msgTypes[6]
+	mi := &file_proto_payment_payment_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -455,7 +1088,7 @@ func (x *ListWalletsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWalletsResponse.ProtoReflect.Descriptor instead.
 func (*ListWalletsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_payment_payment_proto_rawDescGZIP(), []int{6}
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ListWalletsResponse) GetWallets() []*WalletDetail {
@@ -465,11 +1098,680 @@ func (x *ListWalletsResponse) GetWallets() []*WalletDetail {
 	return nil
 }
 
+type DebitCreditWalletRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`                // wallet owner
+	Amount        float64                `protobuf:"fixed64,2,opt,name=amount,proto3" json:"amount,omitempty"`                            // must be positive
+	IsCredit      bool                   `protobuf:"varint,3,opt,name=is_credit,json=isCredit,proto3" json:"is_credit,omitempty"`         // true = credit (add), false = debit (deduct)
+	Narration     string                 `protobuf:"bytes,4,opt,name=narration,proto3" json:"narration,omitempty"`                        // e.g. "Airtime - 08012345678", "Data bundle", "Electricity", "DSTV", "Admin credit"
+	InitiatedBy   string                 `protobuf:"bytes,5,opt,name=initiated_by,json=initiatedBy,proto3" json:"initiated_by,omitempty"` // admin user id or "system"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DebitCreditWalletRequest) Reset() {
+	*x = DebitCreditWalletRequest{}
+	mi := &file_proto_payment_payment_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DebitCreditWalletRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DebitCreditWalletRequest) ProtoMessage() {}
+
+func (x *DebitCreditWalletRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DebitCreditWalletRequest.ProtoReflect.Descriptor instead.
+func (*DebitCreditWalletRequest) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *DebitCreditWalletRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *DebitCreditWalletRequest) GetAmount() float64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *DebitCreditWalletRequest) GetIsCredit() bool {
+	if x != nil {
+		return x.IsCredit
+	}
+	return false
+}
+
+func (x *DebitCreditWalletRequest) GetNarration() string {
+	if x != nil {
+		return x.Narration
+	}
+	return ""
+}
+
+func (x *DebitCreditWalletRequest) GetInitiatedBy() string {
+	if x != nil {
+		return x.InitiatedBy
+	}
+	return ""
+}
+
+type DebitCreditWalletResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Success        bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	TransactionRef string                 `protobuf:"bytes,2,opt,name=transaction_ref,json=transactionRef,proto3" json:"transaction_ref,omitempty"`
+	ErrorMessage   string                 `protobuf:"bytes,3,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *DebitCreditWalletResponse) Reset() {
+	*x = DebitCreditWalletResponse{}
+	mi := &file_proto_payment_payment_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DebitCreditWalletResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DebitCreditWalletResponse) ProtoMessage() {}
+
+func (x *DebitCreditWalletResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DebitCreditWalletResponse.ProtoReflect.Descriptor instead.
+func (*DebitCreditWalletResponse) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *DebitCreditWalletResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *DebitCreditWalletResponse) GetTransactionRef() string {
+	if x != nil {
+		return x.TransactionRef
+	}
+	return ""
+}
+
+func (x *DebitCreditWalletResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+type GetWaasTransactionHistoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	FromDate      string                 `protobuf:"bytes,2,opt,name=from_date,json=fromDate,proto3" json:"from_date,omitempty"` // YYYY-MM-DD
+	ToDate        string                 `protobuf:"bytes,3,opt,name=to_date,json=toDate,proto3" json:"to_date,omitempty"`       // YYYY-MM-DD (max 31 days from from_date)
+	Limit         int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`                      // default 20
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWaasTransactionHistoryRequest) Reset() {
+	*x = GetWaasTransactionHistoryRequest{}
+	mi := &file_proto_payment_payment_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWaasTransactionHistoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWaasTransactionHistoryRequest) ProtoMessage() {}
+
+func (x *GetWaasTransactionHistoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWaasTransactionHistoryRequest.ProtoReflect.Descriptor instead.
+func (*GetWaasTransactionHistoryRequest) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GetWaasTransactionHistoryRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *GetWaasTransactionHistoryRequest) GetFromDate() string {
+	if x != nil {
+		return x.FromDate
+	}
+	return ""
+}
+
+func (x *GetWaasTransactionHistoryRequest) GetToDate() string {
+	if x != nil {
+		return x.ToDate
+	}
+	return ""
+}
+
+func (x *GetWaasTransactionHistoryRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type WaasTransactionItem struct {
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	TransactionDate       string                 `protobuf:"bytes,1,opt,name=transaction_date,json=transactionDate,proto3" json:"transaction_date,omitempty"`
+	TransactionDateString string                 `protobuf:"bytes,2,opt,name=transaction_date_string,json=transactionDateString,proto3" json:"transaction_date_string,omitempty"`
+	Amount                float64                `protobuf:"fixed64,3,opt,name=amount,proto3" json:"amount,omitempty"`
+	Narration             string                 `protobuf:"bytes,4,opt,name=narration,proto3" json:"narration,omitempty"`
+	Balance               float64                `protobuf:"fixed64,5,opt,name=balance,proto3" json:"balance,omitempty"`
+	ReferenceId           string                 `protobuf:"bytes,6,opt,name=reference_id,json=referenceId,proto3" json:"reference_id,omitempty"`
+	Debit                 string                 `protobuf:"bytes,7,opt,name=debit,proto3" json:"debit,omitempty"`
+	Credit                string                 `protobuf:"bytes,8,opt,name=credit,proto3" json:"credit,omitempty"`
+	UniqueIdentifier      string                 `protobuf:"bytes,9,opt,name=unique_identifier,json=uniqueIdentifier,proto3" json:"unique_identifier,omitempty"`
+	IsReversed            bool                   `protobuf:"varint,10,opt,name=is_reversed,json=isReversed,proto3" json:"is_reversed,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *WaasTransactionItem) Reset() {
+	*x = WaasTransactionItem{}
+	mi := &file_proto_payment_payment_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WaasTransactionItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WaasTransactionItem) ProtoMessage() {}
+
+func (x *WaasTransactionItem) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WaasTransactionItem.ProtoReflect.Descriptor instead.
+func (*WaasTransactionItem) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *WaasTransactionItem) GetTransactionDate() string {
+	if x != nil {
+		return x.TransactionDate
+	}
+	return ""
+}
+
+func (x *WaasTransactionItem) GetTransactionDateString() string {
+	if x != nil {
+		return x.TransactionDateString
+	}
+	return ""
+}
+
+func (x *WaasTransactionItem) GetAmount() float64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *WaasTransactionItem) GetNarration() string {
+	if x != nil {
+		return x.Narration
+	}
+	return ""
+}
+
+func (x *WaasTransactionItem) GetBalance() float64 {
+	if x != nil {
+		return x.Balance
+	}
+	return 0
+}
+
+func (x *WaasTransactionItem) GetReferenceId() string {
+	if x != nil {
+		return x.ReferenceId
+	}
+	return ""
+}
+
+func (x *WaasTransactionItem) GetDebit() string {
+	if x != nil {
+		return x.Debit
+	}
+	return ""
+}
+
+func (x *WaasTransactionItem) GetCredit() string {
+	if x != nil {
+		return x.Credit
+	}
+	return ""
+}
+
+func (x *WaasTransactionItem) GetUniqueIdentifier() string {
+	if x != nil {
+		return x.UniqueIdentifier
+	}
+	return ""
+}
+
+func (x *WaasTransactionItem) GetIsReversed() bool {
+	if x != nil {
+		return x.IsReversed
+	}
+	return false
+}
+
+type GetWaasTransactionHistoryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	Transactions  []*WaasTransactionItem `protobuf:"bytes,3,rep,name=transactions,proto3" json:"transactions,omitempty"`
+	ErrorMessage  string                 `protobuf:"bytes,4,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWaasTransactionHistoryResponse) Reset() {
+	*x = GetWaasTransactionHistoryResponse{}
+	mi := &file_proto_payment_payment_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWaasTransactionHistoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWaasTransactionHistoryResponse) ProtoMessage() {}
+
+func (x *GetWaasTransactionHistoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWaasTransactionHistoryResponse.ProtoReflect.Descriptor instead.
+func (*GetWaasTransactionHistoryResponse) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *GetWaasTransactionHistoryResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *GetWaasTransactionHistoryResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *GetWaasTransactionHistoryResponse) GetTransactions() []*WaasTransactionItem {
+	if x != nil {
+		return x.Transactions
+	}
+	return nil
+}
+
+func (x *GetWaasTransactionHistoryResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+type GetWaasWalletStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWaasWalletStatusRequest) Reset() {
+	*x = GetWaasWalletStatusRequest{}
+	mi := &file_proto_payment_payment_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWaasWalletStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWaasWalletStatusRequest) ProtoMessage() {}
+
+func (x *GetWaasWalletStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWaasWalletStatusRequest.ProtoReflect.Descriptor instead.
+func (*GetWaasWalletStatusRequest) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *GetWaasWalletStatusRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type GetWaasWalletStatusResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	WalletStatus  string                 `protobuf:"bytes,2,opt,name=wallet_status,json=walletStatus,proto3" json:"wallet_status,omitempty"` // e.g. ACTIVE
+	ResponseCode  string                 `protobuf:"bytes,3,opt,name=response_code,json=responseCode,proto3" json:"response_code,omitempty"`
+	ErrorMessage  string                 `protobuf:"bytes,4,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWaasWalletStatusResponse) Reset() {
+	*x = GetWaasWalletStatusResponse{}
+	mi := &file_proto_payment_payment_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWaasWalletStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWaasWalletStatusResponse) ProtoMessage() {}
+
+func (x *GetWaasWalletStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWaasWalletStatusResponse.ProtoReflect.Descriptor instead.
+func (*GetWaasWalletStatusResponse) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *GetWaasWalletStatusResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *GetWaasWalletStatusResponse) GetWalletStatus() string {
+	if x != nil {
+		return x.WalletStatus
+	}
+	return ""
+}
+
+func (x *GetWaasWalletStatusResponse) GetResponseCode() string {
+	if x != nil {
+		return x.ResponseCode
+	}
+	return ""
+}
+
+func (x *GetWaasWalletStatusResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+type ChangeWalletStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	AccountStatus string                 `protobuf:"bytes,2,opt,name=account_status,json=accountStatus,proto3" json:"account_status,omitempty"` // "ACTIVE" or "SUSPENDED"
+	InitiatedBy   string                 `protobuf:"bytes,3,opt,name=initiated_by,json=initiatedBy,proto3" json:"initiated_by,omitempty"`       // admin user id
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChangeWalletStatusRequest) Reset() {
+	*x = ChangeWalletStatusRequest{}
+	mi := &file_proto_payment_payment_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChangeWalletStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChangeWalletStatusRequest) ProtoMessage() {}
+
+func (x *ChangeWalletStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChangeWalletStatusRequest.ProtoReflect.Descriptor instead.
+func (*ChangeWalletStatusRequest) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ChangeWalletStatusRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ChangeWalletStatusRequest) GetAccountStatus() string {
+	if x != nil {
+		return x.AccountStatus
+	}
+	return ""
+}
+
+func (x *ChangeWalletStatusRequest) GetInitiatedBy() string {
+	if x != nil {
+		return x.InitiatedBy
+	}
+	return ""
+}
+
+type ChangeWalletStatusResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Success         bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	NewWalletStatus string                 `protobuf:"bytes,2,opt,name=new_wallet_status,json=newWalletStatus,proto3" json:"new_wallet_status,omitempty"` // e.g. ACTIVE, SUSPENDED
+	ErrorMessage    string                 `protobuf:"bytes,3,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ChangeWalletStatusResponse) Reset() {
+	*x = ChangeWalletStatusResponse{}
+	mi := &file_proto_payment_payment_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChangeWalletStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChangeWalletStatusResponse) ProtoMessage() {}
+
+func (x *ChangeWalletStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_payment_payment_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChangeWalletStatusResponse.ProtoReflect.Descriptor instead.
+func (*ChangeWalletStatusResponse) Descriptor() ([]byte, []int) {
+	return file_proto_payment_payment_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ChangeWalletStatusResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *ChangeWalletStatusResponse) GetNewWalletStatus() string {
+	if x != nil {
+		return x.NewWalletStatus
+	}
+	return ""
+}
+
+func (x *ChangeWalletStatusResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
 var File_proto_payment_payment_proto protoreflect.FileDescriptor
 
 const file_proto_payment_payment_proto_rawDesc = "" +
 	"\n" +
-	"\x1bproto/payment/payment.proto\x12\apayment\"\x0f\n" +
+	"\x1bproto/payment/payment.proto\x12\apayment\"X\n" +
+	"\x1aSubmitWalletUpgradeRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12!\n" +
+	"\finitiated_by\x18\x02 \x01(\tR\vinitiatedBy\"v\n" +
+	"\x1bSubmitWalletUpgradeResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12#\n" +
+	"\rerror_message\x18\x03 \x01(\tR\ferrorMessage\"P\n" +
+	" ListWalletUpgradeRequestsRequest\x12\x14\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x02 \x01(\x05R\x06offset\"\xb6\x03\n" +
+	"\x18WalletUpgradeRequestItem\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
+	"\twallet_id\x18\x02 \x01(\tR\bwalletId\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\x12\x1f\n" +
+	"\vupgrade_ref\x18\x04 \x01(\tR\n" +
+	"upgradeRef\x12\x1b\n" +
+	"\ttier_from\x18\x05 \x01(\tR\btierFrom\x12\x17\n" +
+	"\atier_to\x18\x06 \x01(\tR\x06tierTo\x12%\n" +
+	"\x0eupgrade_method\x18\a \x01(\tR\rupgradeMethod\x12+\n" +
+	"\x11initiation_status\x18\b \x01(\tR\x10initiationStatus\x12!\n" +
+	"\ffinal_status\x18\t \x01(\tR\vfinalStatus\x12!\n" +
+	"\finitiated_by\x18\n" +
+	" \x01(\tR\vinitiatedBy\x12!\n" +
+	"\fsubmitted_at\x18\v \x01(\tR\vsubmittedAt\x12!\n" +
+	"\ffinalized_at\x18\f \x01(\tR\vfinalizedAt\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\r \x01(\tR\tcreatedAt\"b\n" +
+	"!ListWalletUpgradeRequestsResponse\x12=\n" +
+	"\brequests\x18\x01 \x03(\v2!.payment.WalletUpgradeRequestItemR\brequests\"0\n" +
+	"\x1eGetWalletUpgradeRequestRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xd4\x01\n" +
+	"\x1fGetWalletUpgradeRequestResponse\x12\x14\n" +
+	"\x05found\x18\x01 \x01(\bR\x05found\x125\n" +
+	"\x04item\x18\x02 \x01(\v2!.payment.WalletUpgradeRequestItemR\x04item\x120\n" +
+	"\x14request_payload_json\x18\x03 \x01(\tR\x12requestPayloadJson\x122\n" +
+	"\x15response_payload_json\x18\x04 \x01(\tR\x13responsePayloadJson\"@\n" +
+	"%GetWalletUpgradeStatusByUserIDRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x8d\x01\n" +
+	"\x15UpgradeStatusFrom9PSB\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12!\n" +
+	"\fdata_message\x18\x03 \x01(\tR\vdataMessage\x12\x1f\n" +
+	"\vdata_status\x18\x04 \x01(\tR\n" +
+	"dataStatus\"\xc9\x01\n" +
+	"&GetWalletUpgradeStatusByUserIDResponse\x12\x1d\n" +
+	"\n" +
+	"has_wallet\x18\x01 \x01(\bR\thasWallet\x12E\n" +
+	"\x0eupgrade_status\x18\x02 \x01(\v2\x1e.payment.UpgradeStatusFrom9PSBR\rupgradeStatus\x129\n" +
+	"\x06latest\x18\x03 \x01(\v2!.payment.WalletUpgradeRequestItemR\x06latest\"\x0f\n" +
 	"\rHealthRequest\"(\n" +
 	"\x0eHealthResponse\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\".\n" +
@@ -504,11 +1806,67 @@ const file_proto_payment_payment_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\x10 \x01(\tR\tupdatedAt\"F\n" +
 	"\x13ListWalletsResponse\x12/\n" +
-	"\awallets\x18\x01 \x03(\v2\x15.payment.WalletDetailR\awallets2\xe2\x01\n" +
+	"\awallets\x18\x01 \x03(\v2\x15.payment.WalletDetailR\awallets\"\xa9\x01\n" +
+	"\x18DebitCreditWalletRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x16\n" +
+	"\x06amount\x18\x02 \x01(\x01R\x06amount\x12\x1b\n" +
+	"\tis_credit\x18\x03 \x01(\bR\bisCredit\x12\x1c\n" +
+	"\tnarration\x18\x04 \x01(\tR\tnarration\x12!\n" +
+	"\finitiated_by\x18\x05 \x01(\tR\vinitiatedBy\"\x83\x01\n" +
+	"\x19DebitCreditWalletResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12'\n" +
+	"\x0ftransaction_ref\x18\x02 \x01(\tR\x0etransactionRef\x12#\n" +
+	"\rerror_message\x18\x03 \x01(\tR\ferrorMessage\"\x87\x01\n" +
+	" GetWaasTransactionHistoryRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
+	"\tfrom_date\x18\x02 \x01(\tR\bfromDate\x12\x17\n" +
+	"\ato_date\x18\x03 \x01(\tR\x06toDate\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\"\xe7\x02\n" +
+	"\x13WaasTransactionItem\x12)\n" +
+	"\x10transaction_date\x18\x01 \x01(\tR\x0ftransactionDate\x126\n" +
+	"\x17transaction_date_string\x18\x02 \x01(\tR\x15transactionDateString\x12\x16\n" +
+	"\x06amount\x18\x03 \x01(\x01R\x06amount\x12\x1c\n" +
+	"\tnarration\x18\x04 \x01(\tR\tnarration\x12\x18\n" +
+	"\abalance\x18\x05 \x01(\x01R\abalance\x12!\n" +
+	"\freference_id\x18\x06 \x01(\tR\vreferenceId\x12\x14\n" +
+	"\x05debit\x18\a \x01(\tR\x05debit\x12\x16\n" +
+	"\x06credit\x18\b \x01(\tR\x06credit\x12+\n" +
+	"\x11unique_identifier\x18\t \x01(\tR\x10uniqueIdentifier\x12\x1f\n" +
+	"\vis_reversed\x18\n" +
+	" \x01(\bR\n" +
+	"isReversed\"\xbe\x01\n" +
+	"!GetWaasTransactionHistoryResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12@\n" +
+	"\ftransactions\x18\x03 \x03(\v2\x1c.payment.WaasTransactionItemR\ftransactions\x12#\n" +
+	"\rerror_message\x18\x04 \x01(\tR\ferrorMessage\"5\n" +
+	"\x1aGetWaasWalletStatusRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\xa6\x01\n" +
+	"\x1bGetWaasWalletStatusResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
+	"\rwallet_status\x18\x02 \x01(\tR\fwalletStatus\x12#\n" +
+	"\rresponse_code\x18\x03 \x01(\tR\fresponseCode\x12#\n" +
+	"\rerror_message\x18\x04 \x01(\tR\ferrorMessage\"~\n" +
+	"\x19ChangeWalletStatusRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12%\n" +
+	"\x0eaccount_status\x18\x02 \x01(\tR\raccountStatus\x12!\n" +
+	"\finitiated_by\x18\x03 \x01(\tR\vinitiatedBy\"\x87\x01\n" +
+	"\x1aChangeWalletStatusResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12*\n" +
+	"\x11new_wallet_status\x18\x02 \x01(\tR\x0fnewWalletStatus\x12#\n" +
+	"\rerror_message\x18\x03 \x01(\tR\ferrorMessage2\xbb\b\n" +
 	"\x0ePaymentService\x129\n" +
 	"\x06Health\x12\x16.payment.HealthRequest\x1a\x17.payment.HealthResponse\x12K\n" +
 	"\fCreateWallet\x12\x1c.payment.CreateWalletRequest\x1a\x1d.payment.CreateWalletResponse\x12H\n" +
-	"\vListWallets\x12\x1b.payment.ListWalletsRequest\x1a\x1c.payment.ListWalletsResponseB;Z9github.com/abubakvr/payup-backend/proto/payment;paymentpbb\x06proto3"
+	"\vListWallets\x12\x1b.payment.ListWalletsRequest\x1a\x1c.payment.ListWalletsResponse\x12Z\n" +
+	"\x11DebitCreditWallet\x12!.payment.DebitCreditWalletRequest\x1a\".payment.DebitCreditWalletResponse\x12r\n" +
+	"\x19GetWaasTransactionHistory\x12).payment.GetWaasTransactionHistoryRequest\x1a*.payment.GetWaasTransactionHistoryResponse\x12`\n" +
+	"\x13GetWaasWalletStatus\x12#.payment.GetWaasWalletStatusRequest\x1a$.payment.GetWaasWalletStatusResponse\x12]\n" +
+	"\x12ChangeWalletStatus\x12\".payment.ChangeWalletStatusRequest\x1a#.payment.ChangeWalletStatusResponse\x12`\n" +
+	"\x13SubmitWalletUpgrade\x12#.payment.SubmitWalletUpgradeRequest\x1a$.payment.SubmitWalletUpgradeResponse\x12r\n" +
+	"\x19ListWalletUpgradeRequests\x12).payment.ListWalletUpgradeRequestsRequest\x1a*.payment.ListWalletUpgradeRequestsResponse\x12l\n" +
+	"\x17GetWalletUpgradeRequest\x12'.payment.GetWalletUpgradeRequestRequest\x1a(.payment.GetWalletUpgradeRequestResponse\x12\x81\x01\n" +
+	"\x1eGetWalletUpgradeStatusByUserID\x12..payment.GetWalletUpgradeStatusByUserIDRequest\x1a/.payment.GetWalletUpgradeStatusByUserIDResponseB;Z9github.com/abubakvr/payup-backend/proto/payment;paymentpbb\x06proto3"
 
 var (
 	file_proto_payment_payment_proto_rawDescOnce sync.Once
@@ -522,29 +1880,69 @@ func file_proto_payment_payment_proto_rawDescGZIP() []byte {
 	return file_proto_payment_payment_proto_rawDescData
 }
 
-var file_proto_payment_payment_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_proto_payment_payment_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_proto_payment_payment_proto_goTypes = []any{
-	(*HealthRequest)(nil),        // 0: payment.HealthRequest
-	(*HealthResponse)(nil),       // 1: payment.HealthResponse
-	(*CreateWalletRequest)(nil),  // 2: payment.CreateWalletRequest
-	(*CreateWalletResponse)(nil), // 3: payment.CreateWalletResponse
-	(*ListWalletsRequest)(nil),   // 4: payment.ListWalletsRequest
-	(*WalletDetail)(nil),         // 5: payment.WalletDetail
-	(*ListWalletsResponse)(nil),  // 6: payment.ListWalletsResponse
+	(*SubmitWalletUpgradeRequest)(nil),             // 0: payment.SubmitWalletUpgradeRequest
+	(*SubmitWalletUpgradeResponse)(nil),            // 1: payment.SubmitWalletUpgradeResponse
+	(*ListWalletUpgradeRequestsRequest)(nil),       // 2: payment.ListWalletUpgradeRequestsRequest
+	(*WalletUpgradeRequestItem)(nil),               // 3: payment.WalletUpgradeRequestItem
+	(*ListWalletUpgradeRequestsResponse)(nil),      // 4: payment.ListWalletUpgradeRequestsResponse
+	(*GetWalletUpgradeRequestRequest)(nil),         // 5: payment.GetWalletUpgradeRequestRequest
+	(*GetWalletUpgradeRequestResponse)(nil),        // 6: payment.GetWalletUpgradeRequestResponse
+	(*GetWalletUpgradeStatusByUserIDRequest)(nil),  // 7: payment.GetWalletUpgradeStatusByUserIDRequest
+	(*UpgradeStatusFrom9PSB)(nil),                  // 8: payment.UpgradeStatusFrom9PSB
+	(*GetWalletUpgradeStatusByUserIDResponse)(nil), // 9: payment.GetWalletUpgradeStatusByUserIDResponse
+	(*HealthRequest)(nil),                          // 10: payment.HealthRequest
+	(*HealthResponse)(nil),                         // 11: payment.HealthResponse
+	(*CreateWalletRequest)(nil),                    // 12: payment.CreateWalletRequest
+	(*CreateWalletResponse)(nil),                   // 13: payment.CreateWalletResponse
+	(*ListWalletsRequest)(nil),                     // 14: payment.ListWalletsRequest
+	(*WalletDetail)(nil),                           // 15: payment.WalletDetail
+	(*ListWalletsResponse)(nil),                    // 16: payment.ListWalletsResponse
+	(*DebitCreditWalletRequest)(nil),               // 17: payment.DebitCreditWalletRequest
+	(*DebitCreditWalletResponse)(nil),              // 18: payment.DebitCreditWalletResponse
+	(*GetWaasTransactionHistoryRequest)(nil),       // 19: payment.GetWaasTransactionHistoryRequest
+	(*WaasTransactionItem)(nil),                    // 20: payment.WaasTransactionItem
+	(*GetWaasTransactionHistoryResponse)(nil),      // 21: payment.GetWaasTransactionHistoryResponse
+	(*GetWaasWalletStatusRequest)(nil),             // 22: payment.GetWaasWalletStatusRequest
+	(*GetWaasWalletStatusResponse)(nil),            // 23: payment.GetWaasWalletStatusResponse
+	(*ChangeWalletStatusRequest)(nil),              // 24: payment.ChangeWalletStatusRequest
+	(*ChangeWalletStatusResponse)(nil),             // 25: payment.ChangeWalletStatusResponse
 }
 var file_proto_payment_payment_proto_depIdxs = []int32{
-	5, // 0: payment.ListWalletsResponse.wallets:type_name -> payment.WalletDetail
-	0, // 1: payment.PaymentService.Health:input_type -> payment.HealthRequest
-	2, // 2: payment.PaymentService.CreateWallet:input_type -> payment.CreateWalletRequest
-	4, // 3: payment.PaymentService.ListWallets:input_type -> payment.ListWalletsRequest
-	1, // 4: payment.PaymentService.Health:output_type -> payment.HealthResponse
-	3, // 5: payment.PaymentService.CreateWallet:output_type -> payment.CreateWalletResponse
-	6, // 6: payment.PaymentService.ListWallets:output_type -> payment.ListWalletsResponse
-	4, // [4:7] is the sub-list for method output_type
-	1, // [1:4] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	3,  // 0: payment.ListWalletUpgradeRequestsResponse.requests:type_name -> payment.WalletUpgradeRequestItem
+	3,  // 1: payment.GetWalletUpgradeRequestResponse.item:type_name -> payment.WalletUpgradeRequestItem
+	8,  // 2: payment.GetWalletUpgradeStatusByUserIDResponse.upgrade_status:type_name -> payment.UpgradeStatusFrom9PSB
+	3,  // 3: payment.GetWalletUpgradeStatusByUserIDResponse.latest:type_name -> payment.WalletUpgradeRequestItem
+	15, // 4: payment.ListWalletsResponse.wallets:type_name -> payment.WalletDetail
+	20, // 5: payment.GetWaasTransactionHistoryResponse.transactions:type_name -> payment.WaasTransactionItem
+	10, // 6: payment.PaymentService.Health:input_type -> payment.HealthRequest
+	12, // 7: payment.PaymentService.CreateWallet:input_type -> payment.CreateWalletRequest
+	14, // 8: payment.PaymentService.ListWallets:input_type -> payment.ListWalletsRequest
+	17, // 9: payment.PaymentService.DebitCreditWallet:input_type -> payment.DebitCreditWalletRequest
+	19, // 10: payment.PaymentService.GetWaasTransactionHistory:input_type -> payment.GetWaasTransactionHistoryRequest
+	22, // 11: payment.PaymentService.GetWaasWalletStatus:input_type -> payment.GetWaasWalletStatusRequest
+	24, // 12: payment.PaymentService.ChangeWalletStatus:input_type -> payment.ChangeWalletStatusRequest
+	0,  // 13: payment.PaymentService.SubmitWalletUpgrade:input_type -> payment.SubmitWalletUpgradeRequest
+	2,  // 14: payment.PaymentService.ListWalletUpgradeRequests:input_type -> payment.ListWalletUpgradeRequestsRequest
+	5,  // 15: payment.PaymentService.GetWalletUpgradeRequest:input_type -> payment.GetWalletUpgradeRequestRequest
+	7,  // 16: payment.PaymentService.GetWalletUpgradeStatusByUserID:input_type -> payment.GetWalletUpgradeStatusByUserIDRequest
+	11, // 17: payment.PaymentService.Health:output_type -> payment.HealthResponse
+	13, // 18: payment.PaymentService.CreateWallet:output_type -> payment.CreateWalletResponse
+	16, // 19: payment.PaymentService.ListWallets:output_type -> payment.ListWalletsResponse
+	18, // 20: payment.PaymentService.DebitCreditWallet:output_type -> payment.DebitCreditWalletResponse
+	21, // 21: payment.PaymentService.GetWaasTransactionHistory:output_type -> payment.GetWaasTransactionHistoryResponse
+	23, // 22: payment.PaymentService.GetWaasWalletStatus:output_type -> payment.GetWaasWalletStatusResponse
+	25, // 23: payment.PaymentService.ChangeWalletStatus:output_type -> payment.ChangeWalletStatusResponse
+	1,  // 24: payment.PaymentService.SubmitWalletUpgrade:output_type -> payment.SubmitWalletUpgradeResponse
+	4,  // 25: payment.PaymentService.ListWalletUpgradeRequests:output_type -> payment.ListWalletUpgradeRequestsResponse
+	6,  // 26: payment.PaymentService.GetWalletUpgradeRequest:output_type -> payment.GetWalletUpgradeRequestResponse
+	9,  // 27: payment.PaymentService.GetWalletUpgradeStatusByUserID:output_type -> payment.GetWalletUpgradeStatusByUserIDResponse
+	17, // [17:28] is the sub-list for method output_type
+	6,  // [6:17] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_proto_payment_payment_proto_init() }
@@ -558,7 +1956,7 @@ func file_proto_payment_payment_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_payment_payment_proto_rawDesc), len(file_proto_payment_payment_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

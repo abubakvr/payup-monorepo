@@ -61,6 +61,7 @@ type ActiveWalletForTransfer struct {
 	WalletID          uuid.UUID
 	AccountNumber     string
 	FullName          string
+	Tier              string // "1", "2", or "3"
 	AvailableBalance  float64
 }
 
@@ -69,12 +70,13 @@ func (r *WalletRepository) GetActiveByUserID(ctx context.Context, userID uuid.UU
 	if r.encKey == "" {
 		return nil, ErrEncryptionKeyMissing
 	}
-	query := `SELECT id, enc_account_number, enc_full_name, available_balance
+	query := `SELECT id, enc_account_number, enc_full_name, COALESCE(tier,'1'), available_balance
 		FROM wallets WHERE user_id = $1 AND status = 'ACTIVE' LIMIT 1`
 	var id uuid.UUID
 	var encAccount, encFullName []byte
+	var tier string
 	var avail float64
-	err := r.db.QueryRowContext(ctx, query, userID).Scan(&id, &encAccount, &encFullName, &avail)
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(&id, &encAccount, &encFullName, &tier, &avail)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -83,12 +85,43 @@ func (r *WalletRepository) GetActiveByUserID(ctx context.Context, userID uuid.UU
 	}
 	accountNumber, _ := r.decrypt(encAccount)
 	fullName, _ := r.decrypt(encFullName)
+	if tier == "" {
+		tier = "1"
+	}
 	return &ActiveWalletForTransfer{
 		WalletID:         id,
 		AccountNumber:    accountNumber,
 		FullName:         fullName,
+		Tier:             tier,
 		AvailableBalance: avail,
 	}, nil
+}
+
+// WalletForStatusChange is the wallet row needed to change status (id, account_number). User has at most one non-CLOSED wallet.
+type WalletForStatusChange struct {
+	WalletID      uuid.UUID
+	AccountNumber string
+	CurrentStatus string
+}
+
+// GetByUserIDForStatusChange returns the user's wallet (ACTIVE or SUSPENDED) for admin status change, or nil if none.
+func (r *WalletRepository) GetByUserIDForStatusChange(ctx context.Context, userID uuid.UUID) (*WalletForStatusChange, error) {
+	if r.encKey == "" {
+		return nil, ErrEncryptionKeyMissing
+	}
+	query := `SELECT id, enc_account_number, status FROM wallets WHERE user_id = $1 AND status != 'CLOSED' LIMIT 1`
+	var id uuid.UUID
+	var encAccount []byte
+	var status string
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(&id, &encAccount, &status)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	accountNumber, _ := r.decrypt(encAccount)
+	return &WalletForStatusChange{WalletID: id, AccountNumber: accountNumber, CurrentStatus: status}, nil
 }
 
 // Create inserts a wallet. Encrypts sensitive fields and stores hashes for lookups. Call only after 9PSB open_wallet success.
@@ -247,6 +280,18 @@ func (r *WalletRepository) ListForAdmin(ctx context.Context, limit, offset int) 
 		})
 	}
 	return list, rows.Err()
+}
+
+// UpdateStatus sets the wallet status (ACTIVE, SUSPENDED, BLOCKED, CLOSED). Used after 9PSB change_wallet_status.
+func (r *WalletRepository) UpdateStatus(ctx context.Context, walletID uuid.UUID, status string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE wallets SET status = $1::wallet_status WHERE id = $2`, status, walletID)
+	return err
+}
+
+// UpdateTier sets the wallet tier (e.g. after WALLET_UPGRADE webhook APPROVED). Used by wallet upgrade finalization.
+func (r *WalletRepository) UpdateTier(ctx context.Context, walletID uuid.UUID, tier string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE wallets SET tier = $1 WHERE id = $2`, tier, walletID)
+	return err
 }
 
 func (r *WalletRepository) decrypt(b []byte) (string, error) {

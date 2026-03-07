@@ -302,6 +302,33 @@ type WalletKYCData struct {
 	Email              string
 }
 
+// WalletUpgradeData holds KYC data + image bytes for 9PSB wallet_upgrade_file_upload. Used by Payment via GetKYCForWalletUpgrade gRPC.
+type WalletUpgradeData struct {
+	AccountName     string
+	BVN             string
+	City            string
+	Email           string
+	HouseNumber     string
+	IDIssueDate     string // YYYY-MM-DD
+	IDNumber        string
+	IDType          string // 1=NIN, 2=Driver's license, etc.
+	LocalGovernment string
+	PEP             string // YES or NO
+	PhoneNumber     string
+	State           string
+	StreetName      string
+	Tier            string // e.g. "3"
+	IDExpiryDate    string // YYYY-MM-DD
+	NearestLandmark string
+	PlaceOfBirth    string
+	NIN             string
+	IDFrontImage     []byte
+	IDBackImage      []byte
+	CustomerImage    []byte
+	UtilityBillImage     []byte // for 9PSB wallet upgrade utilityBill field
+	ProofOfAddressImage  []byte // for 9PSB Tier 3 proofOfAddressVerification
+}
+
 // ReverseGeocodeResponse returned by GET/POST /address/reverse-geocode. Matches frontend ReverseGeocodeData.
 // All address/coordinate fields are always present so the envelope shape is consistent (0 or "" when no data).
 type ReverseGeocodeResponse struct {

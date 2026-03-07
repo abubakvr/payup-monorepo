@@ -16,7 +16,7 @@ import (
 var ErrEncryptionKeyMissing = errors.New("KYC_ENCRYPTION_KEY must be set (64 hex chars)")
 
 type KYCRepository struct {
-	db    *sql.DB
+	db     *sql.DB
 	encKey string
 }
 
@@ -669,14 +669,14 @@ func (r *KYCRepository) CreateAddressGeolocation(g *model.KYCAddressGeolocation)
 
 func nullEmpty(s string) interface{} {
 	if s == "" {
-	return nil
+		return nil
 	}
 	return s
 }
 
 func jsonOrNull(b []byte) interface{} {
 	if len(b) == 0 {
-	return nil
+		return nil
 	}
 	return b
 }

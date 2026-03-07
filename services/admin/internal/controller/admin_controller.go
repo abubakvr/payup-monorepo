@@ -546,6 +546,417 @@ func (c *AdminController) CreateUserWallet(ctx *gin.Context) {
 	})
 }
 
+// AdjustUserWallet POST /users/:id/wallet/adjust (admin JWT) — debit or credit user wallet (airtime, data, electricity, DSTV, etc.). Body: amount, type ("debit"|"credit"), narration.
+func (c *AdminController) AdjustUserWallet(ctx *gin.Context) {
+	claims, _ := auth.ClaimsFrom(ctx)
+	adminID := ""
+	if claims != nil {
+		adminID = claims.AdminID
+	}
+	if c.payment == nil {
+		respondError(ctx, http.StatusServiceUnavailable, "99", "payment service unavailable")
+		return
+	}
+	userID := ctx.Param("id")
+	if userID == "" {
+		respondError(ctx, http.StatusBadRequest, "02", "user id required")
+		return
+	}
+	var body struct {
+		Amount    float64 `json:"amount" binding:"required,gt=0"`
+		Type      string  `json:"type" binding:"required,oneof=debit credit"`
+		Narration string  `json:"narration" binding:"required"`
+	}
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		respondError(ctx, http.StatusBadRequest, "02", "invalid body: amount (positive number), type (debit or credit), narration (required)")
+		return
+	}
+	isCredit := body.Type == "credit"
+	resp, err := c.payment.DebitCreditWallet(ctx.Request.Context(), userID, body.Amount, isCredit, body.Narration, adminID)
+	if err != nil {
+		if c.auditProducer != nil {
+			_ = c.auditProducer.SendAudit("admin_wallet_adjust_failed", "wallet", userID, adminID, map[string]interface{}{"user_id": userID, "amount": body.Amount, "type": body.Type, "error": err.Error()})
+		}
+		respondError(ctx, http.StatusInternalServerError, "99", err.Error())
+		return
+	}
+	if !resp.Success {
+		msg := resp.ErrorMessage
+		if msg == "" {
+			msg = "wallet adjust failed"
+		}
+		if c.auditProducer != nil {
+			_ = c.auditProducer.SendAudit("admin_wallet_adjust_failed", "wallet", userID, adminID, map[string]interface{}{"user_id": userID, "amount": body.Amount, "type": body.Type, "error": msg})
+		}
+		if strings.Contains(msg, "no active wallet") {
+			respondError(ctx, http.StatusNotFound, "02", msg)
+			return
+		}
+		if strings.Contains(msg, "insufficient balance") {
+			respondError(ctx, http.StatusBadRequest, "02", msg)
+			return
+		}
+		respondError(ctx, http.StatusBadRequest, "02", msg)
+		return
+	}
+	if c.auditProducer != nil {
+		_ = c.auditProducer.SendAudit("admin_wallet_adjusted", "wallet", userID, adminID, map[string]interface{}{"user_id": userID, "amount": body.Amount, "type": body.Type, "narration": body.Narration, "transaction_ref": resp.TransactionRef})
+	}
+	respondSuccess(ctx, "wallet adjusted successfully", map[string]interface{}{
+		"user_id":         userID,
+		"amount":          body.Amount,
+		"type":            body.Type,
+		"narration":       body.Narration,
+		"transaction_ref": resp.TransactionRef,
+	})
+}
+
+// ChangeUserWalletStatus PUT /users/:id/wallet/status (admin JWT) — change user wallet status via 9PSB (ACTIVE or SUSPENDED). Body: { "status": "ACTIVE" | "SUSPENDED" }. Payment service sends audit + email.
+func (c *AdminController) ChangeUserWalletStatus(ctx *gin.Context) {
+	claims, _ := auth.ClaimsFrom(ctx)
+	adminID := ""
+	if claims != nil {
+		adminID = claims.AdminID
+	}
+	if c.payment == nil {
+		respondError(ctx, http.StatusServiceUnavailable, "99", "payment service unavailable")
+		return
+	}
+	userID := ctx.Param("id")
+	if userID == "" {
+		respondError(ctx, http.StatusBadRequest, "02", "user id required")
+		return
+	}
+	var body struct {
+		Status string `json:"status" binding:"required,oneof=ACTIVE SUSPENDED"`
+	}
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		respondError(ctx, http.StatusBadRequest, "02", "invalid body: status (ACTIVE or SUSPENDED) required")
+		return
+	}
+	resp, err := c.payment.ChangeWalletStatus(ctx.Request.Context(), userID, body.Status, adminID)
+	if err != nil {
+		if c.auditProducer != nil {
+			_ = c.auditProducer.SendAudit("admin_wallet_status_change_failed", "wallet", userID, adminID, map[string]interface{}{"user_id": userID, "status": body.Status, "error": err.Error()})
+		}
+		respondError(ctx, http.StatusInternalServerError, "99", err.Error())
+		return
+	}
+	if !resp.Success {
+		msg := resp.ErrorMessage
+		if msg == "" {
+			msg = "wallet status change failed"
+		}
+		if c.auditProducer != nil {
+			_ = c.auditProducer.SendAudit("admin_wallet_status_change_failed", "wallet", userID, adminID, map[string]interface{}{"user_id": userID, "status": body.Status, "error": msg})
+		}
+		if strings.Contains(msg, "no wallet found") {
+			respondError(ctx, http.StatusNotFound, "02", msg)
+			return
+		}
+		respondError(ctx, http.StatusBadRequest, "02", msg)
+		return
+	}
+	respondSuccess(ctx, "wallet status updated successfully", map[string]interface{}{
+		"user_id":          userID,
+		"new_wallet_status": resp.NewWalletStatus,
+	})
+}
+
+// SubmitUserWalletUpgrade POST /users/:id/wallet/upgrade (admin JWT) — submit wallet tier upgrade to 9PSB. Payment fetches KYC + images via gRPC, sends multipart to 9PSB; audit + email via Kafka.
+func (c *AdminController) SubmitUserWalletUpgrade(ctx *gin.Context) {
+	claims, _ := auth.ClaimsFrom(ctx)
+	adminID := ""
+	if claims != nil {
+		adminID = claims.AdminID
+	}
+	if c.payment == nil {
+		respondError(ctx, http.StatusServiceUnavailable, "99", "payment service unavailable")
+		return
+	}
+	userID := ctx.Param("id")
+	if userID == "" {
+		respondError(ctx, http.StatusBadRequest, "02", "user id required")
+		return
+	}
+	resp, err := c.payment.SubmitWalletUpgrade(ctx.Request.Context(), userID, adminID)
+	if err != nil {
+		if c.auditProducer != nil {
+			_ = c.auditProducer.SendAudit("admin_wallet_upgrade_failed", "wallet", userID, adminID, map[string]interface{}{"user_id": userID, "error": err.Error()})
+		}
+		respondError(ctx, http.StatusInternalServerError, "99", err.Error())
+		return
+	}
+	if !resp.Success {
+		msg := resp.ErrorMessage
+		if msg == "" {
+			msg = "wallet upgrade submission failed"
+		}
+		if c.auditProducer != nil {
+			_ = c.auditProducer.SendAudit("admin_wallet_upgrade_failed", "wallet", userID, adminID, map[string]interface{}{"user_id": userID, "error": msg})
+		}
+		if strings.Contains(msg, "no active wallet") {
+			respondError(ctx, http.StatusNotFound, "02", msg)
+			return
+		}
+		respondError(ctx, http.StatusBadRequest, "02", msg)
+		return
+	}
+	respondSuccess(ctx, "wallet upgrade request submitted successfully", map[string]interface{}{
+		"user_id": userID,
+		"message": resp.Message,
+	})
+}
+
+// GetUserWalletUpgradeStatus GET /users/:id/wallet/upgrade-status (admin JWT) — upgrade status from 9PSB upgrade_status API (source of truth) plus optional latest request row.
+func (c *AdminController) GetUserWalletUpgradeStatus(ctx *gin.Context) {
+	if c.payment == nil {
+		respondError(ctx, http.StatusServiceUnavailable, "99", "payment service unavailable")
+		return
+	}
+	userID := ctx.Param("id")
+	if userID == "" {
+		respondError(ctx, http.StatusBadRequest, "02", "user id required")
+		return
+	}
+	resp, err := c.payment.GetWalletUpgradeStatusByUserID(ctx.Request.Context(), userID)
+	if err != nil {
+		respondError(ctx, http.StatusInternalServerError, "99", err.Error())
+		return
+	}
+	if resp == nil {
+		respondSuccess(ctx, "ok", gin.H{"has_wallet": false, "upgrade_status": nil})
+		return
+	}
+	payload := gin.H{"has_wallet": resp.HasWallet, "upgrade_status": nil}
+	if resp.UpgradeStatus != nil {
+		payload["upgrade_status"] = gin.H{
+			"status":  resp.UpgradeStatus.Status,
+			"message": resp.UpgradeStatus.Message,
+			"data": gin.H{
+				"message": resp.UpgradeStatus.DataMessage,
+				"status":  resp.UpgradeStatus.DataStatus,
+			},
+		}
+	}
+	if resp.Latest != nil {
+		r := resp.Latest
+		payload["latest_request"] = gin.H{
+			"id":                r.Id,
+			"wallet_id":         r.WalletId,
+			"user_id":           r.UserId,
+			"upgrade_ref":       r.UpgradeRef,
+			"tier_from":         r.TierFrom,
+			"tier_to":           r.TierTo,
+			"upgrade_method":    r.UpgradeMethod,
+			"initiation_status": r.InitiationStatus,
+			"final_status":      r.FinalStatus,
+			"initiated_by":      r.InitiatedBy,
+			"submitted_at":      r.SubmittedAt,
+			"finalized_at":      r.FinalizedAt,
+			"created_at":        r.CreatedAt,
+		}
+	}
+	respondSuccess(ctx, "ok", payload)
+}
+
+// ListWalletUpgradeRequests GET /wallet-upgrades (admin JWT) — list wallet upgrade requests via payment gRPC (paginated: limit, offset).
+func (c *AdminController) ListWalletUpgradeRequests(ctx *gin.Context) {
+	if c.payment == nil {
+		respondError(ctx, http.StatusServiceUnavailable, "99", "payment service unavailable")
+		return
+	}
+	limit, offset := int32(50), int32(0)
+	if l := ctx.Query("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 {
+			limit = int32(n)
+			if limit > 100 {
+				limit = 100
+			}
+		}
+	}
+	if o := ctx.Query("offset"); o != "" {
+		if n, err := strconv.Atoi(o); err == nil && n >= 0 {
+			offset = int32(n)
+		}
+	}
+	resp, err := c.payment.ListWalletUpgradeRequests(ctx.Request.Context(), limit, offset)
+	if err != nil {
+		respondError(ctx, http.StatusInternalServerError, "99", err.Error())
+		return
+	}
+	if resp == nil {
+		respondSuccess(ctx, "ok", gin.H{"requests": []interface{}{}, "limit": limit, "offset": offset})
+		return
+	}
+	requests := make([]map[string]interface{}, 0, len(resp.Requests))
+	for _, r := range resp.Requests {
+		requests = append(requests, map[string]interface{}{
+			"id":                r.Id,
+			"wallet_id":         r.WalletId,
+			"user_id":           r.UserId,
+			"upgrade_ref":       r.UpgradeRef,
+			"tier_from":         r.TierFrom,
+			"tier_to":           r.TierTo,
+			"upgrade_method":    r.UpgradeMethod,
+			"initiation_status": r.InitiationStatus,
+			"final_status":      r.FinalStatus,
+			"initiated_by":      r.InitiatedBy,
+			"submitted_at":      r.SubmittedAt,
+			"finalized_at":      r.FinalizedAt,
+			"created_at":        r.CreatedAt,
+		})
+	}
+	respondSuccess(ctx, "ok", gin.H{"requests": requests, "limit": limit, "offset": offset})
+}
+
+// GetWalletUpgradeRequest GET /wallet-upgrades/:id (admin JWT) — get one wallet upgrade request by id (includes request/response payload JSON).
+func (c *AdminController) GetWalletUpgradeRequest(ctx *gin.Context) {
+	if c.payment == nil {
+		respondError(ctx, http.StatusServiceUnavailable, "99", "payment service unavailable")
+		return
+	}
+	id := ctx.Param("id")
+	if id == "" {
+		respondError(ctx, http.StatusBadRequest, "02", "upgrade request id required")
+		return
+	}
+	resp, err := c.payment.GetWalletUpgradeRequest(ctx.Request.Context(), id)
+	if err != nil {
+		respondError(ctx, http.StatusInternalServerError, "99", err.Error())
+		return
+	}
+	if resp == nil || !resp.Found {
+		respondError(ctx, http.StatusNotFound, "02", "wallet upgrade request not found")
+		return
+	}
+	r := resp.Item
+	data := map[string]interface{}{
+		"id":                r.Id,
+		"wallet_id":         r.WalletId,
+		"user_id":           r.UserId,
+		"upgrade_ref":       r.UpgradeRef,
+		"tier_from":         r.TierFrom,
+		"tier_to":           r.TierTo,
+		"upgrade_method":    r.UpgradeMethod,
+		"initiation_status": r.InitiationStatus,
+		"final_status":      r.FinalStatus,
+		"initiated_by":      r.InitiatedBy,
+		"submitted_at":      r.SubmittedAt,
+		"finalized_at":      r.FinalizedAt,
+		"created_at":        r.CreatedAt,
+	}
+	if resp.RequestPayloadJson != "" {
+		var reqPayload interface{}
+		if json.Unmarshal([]byte(resp.RequestPayloadJson), &reqPayload) == nil {
+			data["request_payload"] = reqPayload
+		} else {
+			data["request_payload"] = resp.RequestPayloadJson
+		}
+	}
+	if resp.ResponsePayloadJson != "" {
+		var respPayload interface{}
+		if json.Unmarshal([]byte(resp.ResponsePayloadJson), &respPayload) == nil {
+			data["response_payload"] = respPayload
+		} else {
+			data["response_payload"] = resp.ResponsePayloadJson
+		}
+	}
+	respondSuccess(ctx, "ok", data)
+}
+
+// GetUserWaasTransactions GET /users/:id/wallet/waas/transactions (admin JWT) — 9PSB WaaS transaction history for user. Query: from_date, to_date (YYYY-MM-DD, max 31 days), limit (default 20).
+func (c *AdminController) GetUserWaasTransactions(ctx *gin.Context) {
+	if c.payment == nil {
+		respondError(ctx, http.StatusServiceUnavailable, "99", "payment service unavailable")
+		return
+	}
+	userID := ctx.Param("id")
+	if userID == "" {
+		respondError(ctx, http.StatusBadRequest, "02", "user id required")
+		return
+	}
+	fromDate := ctx.Query("from_date")
+	toDate := ctx.Query("to_date")
+	if fromDate == "" || toDate == "" {
+		respondError(ctx, http.StatusBadRequest, "02", "from_date and to_date (YYYY-MM-DD) are required")
+		return
+	}
+	limit := int32(20)
+	if l := ctx.Query("limit"); l != "" {
+		if n, err := strconv.ParseInt(l, 10, 32); err == nil && n > 0 {
+			limit = int32(n)
+			if limit > 100 {
+				limit = 100
+			}
+		}
+	}
+	resp, err := c.payment.GetWaasTransactionHistory(ctx.Request.Context(), userID, fromDate, toDate, limit)
+	if err != nil {
+		respondError(ctx, http.StatusInternalServerError, "99", err.Error())
+		return
+	}
+	if !resp.Success {
+		msg := resp.ErrorMessage
+		if msg == "" {
+			msg = "failed to fetch transaction history"
+		}
+		if strings.Contains(msg, "no active wallet") {
+			respondError(ctx, http.StatusNotFound, "02", msg)
+			return
+		}
+		respondError(ctx, http.StatusBadRequest, "02", msg)
+		return
+	}
+	transactions := make([]gin.H, 0, len(resp.Transactions))
+	for _, t := range resp.Transactions {
+		transactions = append(transactions, gin.H{
+			"transaction_date":        t.TransactionDate,
+			"transaction_date_string": t.TransactionDateString,
+			"amount":                  t.Amount,
+			"narration":               t.Narration,
+			"balance":                 t.Balance,
+			"reference_id":            t.ReferenceId,
+			"debit":                   t.Debit,
+			"credit":                  t.Credit,
+			"unique_identifier":       t.UniqueIdentifier,
+			"is_reversed":             t.IsReversed,
+		})
+	}
+	respondSuccess(ctx, resp.Message, gin.H{"transactions": transactions})
+}
+
+// GetUserWaasWalletStatus GET /users/:id/wallet/waas/status (admin JWT) — 9PSB WaaS wallet status for user.
+func (c *AdminController) GetUserWaasWalletStatus(ctx *gin.Context) {
+	if c.payment == nil {
+		respondError(ctx, http.StatusServiceUnavailable, "99", "payment service unavailable")
+		return
+	}
+	userID := ctx.Param("id")
+	if userID == "" {
+		respondError(ctx, http.StatusBadRequest, "02", "user id required")
+		return
+	}
+	resp, err := c.payment.GetWaasWalletStatus(ctx.Request.Context(), userID)
+	if err != nil {
+		respondError(ctx, http.StatusInternalServerError, "99", err.Error())
+		return
+	}
+	if !resp.Success {
+		msg := resp.ErrorMessage
+		if msg == "" {
+			msg = "failed to fetch wallet status"
+		}
+		if strings.Contains(msg, "no active wallet") {
+			respondError(ctx, http.StatusNotFound, "02", msg)
+			return
+		}
+		respondError(ctx, http.StatusBadRequest, "02", msg)
+		return
+	}
+	respondSuccess(ctx, "ok", gin.H{"wallet_status": resp.WalletStatus, "response_code": resp.ResponseCode})
+}
+
 // GetUserKYC GET /users/:id/kyc (admin JWT) — full KYC for user via KYC service gRPC
 func (c *AdminController) GetUserKYC(ctx *gin.Context) {
 	if c.kyc == nil {

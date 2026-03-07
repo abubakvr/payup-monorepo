@@ -93,6 +93,70 @@ func (r *TransactionRepository) CreateTransfer(ctx context.Context, p *CreateTra
 	return id, nil
 }
 
+// CreateInternalDebitCreditParams are inputs for internal wallet debit/credit (airtime, data, electricity, DSTV, admin adjust).
+type CreateInternalDebitCreditParams struct {
+	WalletID       uuid.UUID
+	TransactionRef string
+	Type           string // "DEBIT" or "CREDIT"
+	Direction      string // "OUT" or "IN"
+	Amount         float64
+	Narration      string
+	InitiatedBy    string
+	ProviderRef    string // optional; 9PSB WaaS reference from debit/credit response
+}
+
+// CreateInternalDebitCredit inserts a SUCCESS transaction row for internal debit/credit. No provider or beneficiary fields.
+// Call PostLedgerEntry after this to update wallet balance and ledger.
+func (r *TransactionRepository) CreateInternalDebitCredit(ctx context.Context, p *CreateInternalDebitCreditParams) (uuid.UUID, error) {
+	query := `INSERT INTO transactions (
+		wallet_id, transaction_ref, type, direction, amount, fee_amount,
+		narration, status, channel, initiated_by
+	) VALUES ($1,$2,$3::txn_type,$4::txn_direction,$5,0,$6,'SUCCESS','API',$7)
+	RETURNING id`
+	var id uuid.UUID
+	err := r.db.QueryRowContext(ctx, query,
+		p.WalletID, p.TransactionRef, p.Type, p.Direction, p.Amount, p.Narration, optStr(p.InitiatedBy),
+	).Scan(&id)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return id, nil
+}
+
+// CreateInternalDebitCreditAndPostLedger creates the transaction row and posts the ledger entry in a single DB transaction.
+// On DEBIT, post_ledger_entry raises if balance would go negative; the whole operation is rolled back.
+func (r *TransactionRepository) CreateInternalDebitCreditAndPostLedger(ctx context.Context, p *CreateInternalDebitCreditParams) (txnID uuid.UUID, err error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+	insertQuery := `INSERT INTO transactions (
+		wallet_id, transaction_ref, type, direction, amount, fee_amount,
+		narration, status, channel, initiated_by, provider_ref
+	) VALUES ($1,$2,$3::txn_type,$4::txn_direction,$5,0,$6,'SUCCESS','API',$7,$8)
+	RETURNING id`
+	if err = tx.QueryRowContext(ctx, insertQuery,
+		p.WalletID, p.TransactionRef, p.Type, p.Direction, p.Amount, p.Narration, optStr(p.InitiatedBy), optStr(p.ProviderRef),
+	).Scan(&txnID); err != nil {
+		return uuid.Nil, err
+	}
+	ledgerQuery := `SELECT post_ledger_entry($1, $2, $3::ledger_entry_type, $4, 'NGN', $5)`
+	entryType := p.Type // "DEBIT" or "CREDIT"
+	var _ledgerID uuid.UUID
+	if err = tx.QueryRowContext(ctx, ledgerQuery, txnID, p.WalletID, entryType, p.Amount, optStr(p.Narration)).Scan(&_ledgerID); err != nil {
+		return uuid.Nil, fmt.Errorf("post_ledger_entry: %w", err)
+	}
+	if err = tx.Commit(); err != nil {
+		return uuid.Nil, err
+	}
+	return txnID, nil
+}
+
 // UpdateTransferAfterAPI updates status, provider_ref, enc_psb_response, psb_response_code after 9PSB call.
 func (r *TransactionRepository) UpdateTransferAfterAPI(ctx context.Context, txnID uuid.UUID, status string, providerRef string, psbResponseJSON []byte, responseCode string) error {
 	var encPsbResponse []byte

@@ -21,6 +21,7 @@ type Config struct {
 	// 9PSB authentication (do not log; use env or secrets manager)
 	PsbBaseURL      string // e.g. https://api.9psb.com.ng (auth, open_wallet, etc.)
 	PsbBaseURL2     string // optional; for wallet_other_banks if different from PsbBaseURL
+	PsbWaasBaseURL  string // optional; for WaaS debit/credit e.g. http://102.216.128.75:9090/waas
 	PsbUsername     string
 	PsbPassword     string
 	PsbClientID     string
@@ -62,22 +63,23 @@ func Load() *Config {
 		kafkaBroker = "redpanda:9092"
 	}
 	return &Config{
-		Port:                 port,
-		GrpcPort:             grpcPort,
-		DatabaseURL:          dbURL,
-		KafkaBroker:          kafkaBroker,
-		RedisAddr:            os.Getenv("REDIS_ADDR"),
-		RedisPassword:        os.Getenv("REDIS_PASSWORD"),
-		PsbBaseURL:           os.Getenv("PSB_BASE_URL"),
-		PsbBaseURL2:          os.Getenv("PSB_BASE_URL2"), // if empty, use PsbBaseURL for wallet_other_banks
-		PsbUsername:          os.Getenv("PSB_USERNAME"),
-		PsbPassword:          os.Getenv("PSB_PASSWORD"),
-		PsbClientID:          os.Getenv("PSB_CLIENT_ID"),
-		PsbClientSecret:      os.Getenv("PSB_CLIENT_SECRET"),
-		EncryptionKey:        os.Getenv("PAYMENT_ENCRYPTION_KEY"),
-		JWTSecret:             os.Getenv("JWT_SECRET"),
-		KYCServiceGrpcAddr:   os.Getenv("KYC_SERVICE_GRPC_ADDR"),
-		UserServiceGrpcAddr:   os.Getenv("USER_SERVICE_GRPC_ADDR"),
+		Port:                port,
+		GrpcPort:            grpcPort,
+		DatabaseURL:         dbURL,
+		KafkaBroker:         kafkaBroker,
+		RedisAddr:           os.Getenv("REDIS_ADDR"),
+		RedisPassword:       os.Getenv("REDIS_PASSWORD"),
+		PsbBaseURL:          os.Getenv("PSB_BASE_URL"),
+		PsbBaseURL2:         os.Getenv("PSB_BASE_URL"), // if empty, use PsbBaseURL for wallet_other_banks
+		PsbWaasBaseURL:      os.Getenv("PSB_BASE_URL"), // e.g. http://102.216.128.75:9090/waas for debit/credit
+		PsbUsername:         os.Getenv("PSB_USERNAME"),
+		PsbPassword:         os.Getenv("PSB_PASSWORD"),
+		PsbClientID:         os.Getenv("PSB_CLIENT_ID"),
+		PsbClientSecret:     os.Getenv("PSB_CLIENT_SECRET"),
+		EncryptionKey:       os.Getenv("PAYMENT_ENCRYPTION_KEY"),
+		JWTSecret:           os.Getenv("JWT_SECRET"),
+		KYCServiceGrpcAddr:  os.Getenv("KYC_SERVICE_GRPC_ADDR"),
+		UserServiceGrpcAddr: os.Getenv("USER_SERVICE_GRPC_ADDR"),
 	}
 }
 
