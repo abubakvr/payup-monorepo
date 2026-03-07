@@ -553,6 +553,134 @@ func (x *SetUserRestrictedResponse) GetMessage() string {
 	return ""
 }
 
+type ValidateTransferRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Amount        float64                `protobuf:"fixed64,2,opt,name=amount,proto3" json:"amount,omitempty"` // transfer amount for limit checks
+	Pin           string                 `protobuf:"bytes,3,opt,name=pin,proto3" json:"pin,omitempty"`         // plain PIN (4 digits)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ValidateTransferRequest) Reset() {
+	*x = ValidateTransferRequest{}
+	mi := &file_proto_user_user_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidateTransferRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidateTransferRequest) ProtoMessage() {}
+
+func (x *ValidateTransferRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_user_user_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidateTransferRequest.ProtoReflect.Descriptor instead.
+func (*ValidateTransferRequest) Descriptor() ([]byte, []int) {
+	return file_proto_user_user_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ValidateTransferRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ValidateTransferRequest) GetAmount() float64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *ValidateTransferRequest) GetPin() string {
+	if x != nil {
+		return x.Pin
+	}
+	return ""
+}
+
+type ValidateTransferResponse struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	Allowed              bool                   `protobuf:"varint,1,opt,name=allowed,proto3" json:"allowed,omitempty"`
+	Message              string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`                                                           // reason when allowed is false, e.g. "invalid PIN", "transfers paused"
+	DailyTransferLimit   float64                `protobuf:"fixed64,3,opt,name=daily_transfer_limit,json=dailyTransferLimit,proto3" json:"daily_transfer_limit,omitempty"`       // from user_settings; 0 means not set (no daily cap)
+	MonthlyTransferLimit float64                `protobuf:"fixed64,4,opt,name=monthly_transfer_limit,json=monthlyTransferLimit,proto3" json:"monthly_transfer_limit,omitempty"` // from user_settings; 0 means not set (no monthly cap)
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *ValidateTransferResponse) Reset() {
+	*x = ValidateTransferResponse{}
+	mi := &file_proto_user_user_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidateTransferResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidateTransferResponse) ProtoMessage() {}
+
+func (x *ValidateTransferResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_user_user_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidateTransferResponse.ProtoReflect.Descriptor instead.
+func (*ValidateTransferResponse) Descriptor() ([]byte, []int) {
+	return file_proto_user_user_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ValidateTransferResponse) GetAllowed() bool {
+	if x != nil {
+		return x.Allowed
+	}
+	return false
+}
+
+func (x *ValidateTransferResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *ValidateTransferResponse) GetDailyTransferLimit() float64 {
+	if x != nil {
+		return x.DailyTransferLimit
+	}
+	return 0
+}
+
+func (x *ValidateTransferResponse) GetMonthlyTransferLimit() float64 {
+	if x != nil {
+		return x.MonthlyTransferLimit
+	}
+	return 0
+}
+
 var File_proto_user_user_proto protoreflect.FileDescriptor
 
 const file_proto_user_user_proto_rawDesc = "" +
@@ -598,13 +726,24 @@ const file_proto_user_user_proto_rawDesc = "" +
 	"restricted\"O\n" +
 	"\x19SetUserRestrictedResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage2]\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\\\n" +
+	"\x17ValidateTransferRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x16\n" +
+	"\x06amount\x18\x02 \x01(\x01R\x06amount\x12\x10\n" +
+	"\x03pin\x18\x03 \x01(\tR\x03pin\"\xb6\x01\n" +
+	"\x18ValidateTransferResponse\x12\x18\n" +
+	"\aallowed\x18\x01 \x01(\bR\aallowed\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x120\n" +
+	"\x14daily_transfer_limit\x18\x03 \x01(\x01R\x12dailyTransferLimit\x124\n" +
+	"\x16monthly_transfer_limit\x18\x04 \x01(\x01R\x14monthlyTransferLimit2]\n" +
 	"\x11UserServiceForKYC\x12H\n" +
 	"\rGetUserForKYC\x12\x1a.user.GetUserForKYCRequest\x1a\x1b.user.GetUserForKYCResponse2\xf9\x01\n" +
 	"\x13UserServiceForAdmin\x12<\n" +
 	"\tListUsers\x12\x16.user.ListUsersRequest\x1a\x17.user.ListUsersResponse\x12N\n" +
 	"\x0fGetUserForAdmin\x12\x1c.user.GetUserForAdminRequest\x1a\x1d.user.GetUserForAdminResponse\x12T\n" +
-	"\x11SetUserRestricted\x12\x1e.user.SetUserRestrictedRequest\x1a\x1f.user.SetUserRestrictedResponseB5Z3github.com/abubakvr/payup-backend/proto/user;userpbb\x06proto3"
+	"\x11SetUserRestricted\x12\x1e.user.SetUserRestrictedRequest\x1a\x1f.user.SetUserRestrictedResponse2j\n" +
+	"\x15UserServiceForPayment\x12Q\n" +
+	"\x10ValidateTransfer\x12\x1d.user.ValidateTransferRequest\x1a\x1e.user.ValidateTransferResponseB5Z3github.com/abubakvr/payup-backend/proto/user;userpbb\x06proto3"
 
 var (
 	file_proto_user_user_proto_rawDescOnce sync.Once
@@ -618,7 +757,7 @@ func file_proto_user_user_proto_rawDescGZIP() []byte {
 	return file_proto_user_user_proto_rawDescData
 }
 
-var file_proto_user_user_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_proto_user_user_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_proto_user_user_proto_goTypes = []any{
 	(*GetUserForKYCRequest)(nil),      // 0: user.GetUserForKYCRequest
 	(*GetUserForKYCResponse)(nil),     // 1: user.GetUserForKYCResponse
@@ -629,23 +768,27 @@ var file_proto_user_user_proto_goTypes = []any{
 	(*AdminUserSummary)(nil),          // 6: user.AdminUserSummary
 	(*SetUserRestrictedRequest)(nil),  // 7: user.SetUserRestrictedRequest
 	(*SetUserRestrictedResponse)(nil), // 8: user.SetUserRestrictedResponse
+	(*ValidateTransferRequest)(nil),   // 9: user.ValidateTransferRequest
+	(*ValidateTransferResponse)(nil),  // 10: user.ValidateTransferResponse
 }
 var file_proto_user_user_proto_depIdxs = []int32{
-	6, // 0: user.ListUsersResponse.users:type_name -> user.AdminUserSummary
-	6, // 1: user.GetUserForAdminResponse.user:type_name -> user.AdminUserSummary
-	0, // 2: user.UserServiceForKYC.GetUserForKYC:input_type -> user.GetUserForKYCRequest
-	2, // 3: user.UserServiceForAdmin.ListUsers:input_type -> user.ListUsersRequest
-	4, // 4: user.UserServiceForAdmin.GetUserForAdmin:input_type -> user.GetUserForAdminRequest
-	7, // 5: user.UserServiceForAdmin.SetUserRestricted:input_type -> user.SetUserRestrictedRequest
-	1, // 6: user.UserServiceForKYC.GetUserForKYC:output_type -> user.GetUserForKYCResponse
-	3, // 7: user.UserServiceForAdmin.ListUsers:output_type -> user.ListUsersResponse
-	5, // 8: user.UserServiceForAdmin.GetUserForAdmin:output_type -> user.GetUserForAdminResponse
-	8, // 9: user.UserServiceForAdmin.SetUserRestricted:output_type -> user.SetUserRestrictedResponse
-	6, // [6:10] is the sub-list for method output_type
-	2, // [2:6] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	6,  // 0: user.ListUsersResponse.users:type_name -> user.AdminUserSummary
+	6,  // 1: user.GetUserForAdminResponse.user:type_name -> user.AdminUserSummary
+	0,  // 2: user.UserServiceForKYC.GetUserForKYC:input_type -> user.GetUserForKYCRequest
+	2,  // 3: user.UserServiceForAdmin.ListUsers:input_type -> user.ListUsersRequest
+	4,  // 4: user.UserServiceForAdmin.GetUserForAdmin:input_type -> user.GetUserForAdminRequest
+	7,  // 5: user.UserServiceForAdmin.SetUserRestricted:input_type -> user.SetUserRestrictedRequest
+	9,  // 6: user.UserServiceForPayment.ValidateTransfer:input_type -> user.ValidateTransferRequest
+	1,  // 7: user.UserServiceForKYC.GetUserForKYC:output_type -> user.GetUserForKYCResponse
+	3,  // 8: user.UserServiceForAdmin.ListUsers:output_type -> user.ListUsersResponse
+	5,  // 9: user.UserServiceForAdmin.GetUserForAdmin:output_type -> user.GetUserForAdminResponse
+	8,  // 10: user.UserServiceForAdmin.SetUserRestricted:output_type -> user.SetUserRestrictedResponse
+	10, // 11: user.UserServiceForPayment.ValidateTransfer:output_type -> user.ValidateTransferResponse
+	7,  // [7:12] is the sub-list for method output_type
+	2,  // [2:7] is the sub-list for method input_type
+	2,  // [2:2] is the sub-list for extension type_name
+	2,  // [2:2] is the sub-list for extension extendee
+	0,  // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_proto_user_user_proto_init() }
@@ -659,9 +802,9 @@ func file_proto_user_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_user_user_proto_rawDesc), len(file_proto_user_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
-			NumServices:   2,
+			NumServices:   3,
 		},
 		GoTypes:           file_proto_user_user_proto_goTypes,
 		DependencyIndexes: file_proto_user_user_proto_depIdxs,

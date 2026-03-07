@@ -48,6 +48,15 @@ func main() {
 		auditClient = a
 		defer auditClient.Close()
 	}
+	var paymentClient *clients.PaymentAdminClient
+	if cfg.PaymentServiceGrpcAddr != "" {
+		if p, err := clients.NewPaymentAdminClient(cfg.PaymentServiceGrpcAddr); err != nil {
+			log.Printf("admin: payment gRPC client: %v", err)
+		} else {
+			paymentClient = p
+			defer paymentClient.Close()
+		}
+	}
 
 	var auditProducer *kafka.AuditProducer
 	var notificationProducer *kafka.NotificationProducer
@@ -73,7 +82,7 @@ func main() {
 		log.Printf("Super admin created from ADMIN_BOOTSTRAP_* env")
 	}
 
-	ctrl := controller.NewAdminController(svc, userClient, kycClient, auditClient, auditProducer, notificationProducer, cfg.AdminPortalURL, cfg.KYCAdminAPIKey)
+	ctrl := controller.NewAdminController(svc, userClient, kycClient, auditClient, paymentClient, auditProducer, notificationProducer, cfg.AdminPortalURL, cfg.KYCAdminAPIKey)
 	r := router.Setup(ctrl)
 
 	addr := ":" + cfg.Port

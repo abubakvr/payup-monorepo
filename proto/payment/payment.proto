@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package payment;
+
+option go_package = "github.com/abubakvr/payup-backend/proto/payment;paymentpb";
+
+// PaymentService — add your payment RPCs here. Regenerate with protoc after editing.
+service PaymentService {
+  rpc Health (HealthRequest) returns (HealthResponse);
+  // CreateWallet creates a 9PSB wallet for the user. Payment service fetches KYC via gRPC, calls 9PSB, saves wallet and emits audit + notification via Kafka.
+  rpc CreateWallet (CreateWalletRequest) returns (CreateWalletResponse);
+  // ListWallets returns all wallets with details for admin view (decrypted account_number, full_name, etc.). Paginated.
+  rpc ListWallets (ListWalletsRequest) returns (ListWalletsResponse);
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  string status = 1;
+}
+
+message CreateWalletRequest {
+  string user_id = 1;
+}
+
+message CreateWalletResponse {
+  bool success = 1;
+  string account_number = 2;
+  string error_message = 3;
+}
+
+message ListWalletsRequest {
+  int32 limit = 1;   // default 50, max 100
+  int32 offset = 2;  // default 0
+}
+
+message WalletDetail {
+  string id = 1;
+  string user_id = 2;
+  string account_number = 3;
+  string customer_id = 4;
+  string order_ref = 5;
+  string full_name = 6;
+  string phone = 7;
+  string email = 8;
+  string mfb_code = 9;
+  string tier = 10;
+  string status = 11;
+  double ledger_balance = 12;
+  double available_balance = 13;
+  string provider = 14;
+  string created_at = 15;
+  string updated_at = 16;
+}
+
+message ListWalletsResponse {
+  repeated WalletDetail wallets = 1;
+}

@@ -46,17 +46,22 @@ func NewAuditProducer(brokers []string) *AuditProducer {
 
 // SendAdminCreated sends an admin_created audit event. Safe to call with nil producer (no-op).
 func (p *AuditProducer) SendAdminCreated(createdByAdminID, newAdminID string, metadata map[string]interface{}) error {
+	return p.SendAudit("admin_created", "admin", newAdminID, createdByAdminID, metadata)
+}
+
+// SendAudit sends a generic audit event to audit-events. Safe to call with nil producer (no-op).
+func (p *AuditProducer) SendAudit(action, entity, entityID, userID string, metadata map[string]interface{}) error {
 	if p == nil || p.writer == nil {
 		return nil
 	}
 	event := AuditEvent{
 		Service:   serviceName,
-		UserID:     strPtr(createdByAdminID),
-		Action:     "admin_created",
-		Entity:     "admin",
-		EntityID:   strPtr(newAdminID),
-		Metadata:   metadata,
-		Timestamp:  time.Now(),
+		UserID:    strPtr(userID),
+		Action:    action,
+		Entity:    entity,
+		EntityID:  strPtr(entityID),
+		Metadata:  metadata,
+		Timestamp: time.Now(),
 	}
 	payload, err := json.Marshal(event)
 	if err != nil {

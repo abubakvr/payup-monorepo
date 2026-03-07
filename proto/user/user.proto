@@ -68,3 +68,21 @@ message SetUserRestrictedResponse {
   bool success = 1;
   string message = 2;  // error message when success is false
 }
+
+// UserServiceForPayment is used by Payment service to validate transfer (PIN, restricted, limits, paused).
+service UserServiceForPayment {
+  rpc ValidateTransfer (ValidateTransferRequest) returns (ValidateTransferResponse);
+}
+
+message ValidateTransferRequest {
+  string user_id = 1;
+  double amount = 2;   // transfer amount for limit checks
+  string pin = 3;      // plain PIN (4 digits)
+}
+
+message ValidateTransferResponse {
+  bool allowed = 1;
+  string message = 2;  // reason when allowed is false, e.g. "invalid PIN", "transfers paused"
+  double daily_transfer_limit = 3;   // from user_settings; 0 means not set (no daily cap)
+  double monthly_transfer_limit = 4; // from user_settings; 0 means not set (no monthly cap)
+}

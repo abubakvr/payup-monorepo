@@ -10,6 +10,7 @@ services:
       KYC_DB_PASSWORD: ${KYC_DB_PASSWORD}
       AUDIT_DB_PASSWORD: ${AUDIT_DB_PASSWORD}
       ADMIN_DB_PASSWORD: ${ADMIN_DB_PASSWORD}
+      PAYMENT_DB_PASSWORD: ${PAYMENT_DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -159,7 +160,8 @@ services:
     command:
       - "rpk topic create user-events --brokers redpanda:9092 2>/dev/null || true
         rpk topic create audit-events --brokers redpanda:9092 2>/dev/null || true
-        rpk topic create notification-events --brokers redpanda:9092 2>/dev/null || true"
+        rpk topic create notification-events --brokers redpanda:9092 2>/dev/null || true
+        rpk topic create wallet-events --brokers redpanda:9092 2>/dev/null || true"
     networks:
       - payup-internal
     depends_on:
@@ -284,6 +286,69 @@ services:
         - action: rebuild
           path: ./services/admin
 
+  payment-db-ensure:
+    image: postgres:16
+    environment:
+      PGHOST: payup-postgres2
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PAYMENT_DB_PASSWORD: ${PAYMENT_DB_PASSWORD}
+    volumes:
+      - ./infra/postgres/create-payment-role.sql:/create-payment-role.sql:ro
+    command: ["sh", "-c", "psql -v ON_ERROR_STOP=0 -v payment_password=\"$PAYMENT_DB_PASSWORD\" -f /create-payment-role.sql || true"]
+    networks:
+      - payup-internal
+    depends_on:
+      payup-postgres2:
+        condition: service_healthy
+    restart: "no"
+
+  payment-migrate:
+    image: migrate/migrate:v4.16.0
+    env_file:
+      - .env
+    entrypoint: ["sh", "-c"]
+    command:
+      - "migrate -path /migrations -database \"postgres://$$PAYMENT_DB_USER:$$PAYMENT_DB_PASSWORD@$$PAYMENT_DB_HOST:$$PAYMENT_DB_PORT/$$PAYMENT_DB_NAME?sslmode=$$PAYMENT_DB_SSLMODE\" up"
+    volumes:
+      - ./services/payment/migrations:/migrations
+    networks:
+      - payup-internal
+    depends_on:
+      payment-db-ensure:
+        condition: service_completed_successfully
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: services/payment/Dockerfile
+    env_file:
+      - .env
+    environment:
+      PAYMENT_SERVICE_PORT: "8006"
+      PAYMENT_GRPC_PORT: "9004"
+      PAYMENT_DATABASE_URL: ${PAYMENT_DATABASE_URL}
+      KAFKA_BROKER: ${KAFKA_BROKER:-redpanda:9092}
+      KYC_SERVICE_GRPC_ADDR: kyc-service:9002
+      USER_SERVICE_GRPC_ADDR: user-service:9001
+      REDIS_ADDR: ${REDIS_ADDR:-redis:6379}
+      JWT_SECRET: ${JWT_SECRET}
+    networks:
+      - payup-internal
+    depends_on:
+      redis:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      payment-migrate:
+        condition: service_completed_successfully
+    develop:
+      watch:
+        - action: rebuild
+          path: ./services/payment
+
   api-gateway:
     image: nginx:alpine
     container_name: payup-api-gateway
@@ -299,6 +364,7 @@ services:
       - audit-service
       - notification-service
       - admin-service
+      - payment-service
 
 volumes:
   redpanda_data:

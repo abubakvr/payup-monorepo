@@ -19,6 +19,7 @@ type Config struct {
 	UserServiceGrpcAddr   string // e.g. user-service:9001
 	KYCServiceGrpcAddr    string // e.g. kyc-service:9002
 	AuditServiceGrpcAddr  string // e.g. audit-service:9003
+	PaymentServiceGrpcAddr string // e.g. payment-service:9004
 	KYCAdminAPIKey        string // X-Admin-Key used to call KYC HTTP admin image endpoint
 	KafkaBroker           string // e.g. redpanda:9092 (for audit-events, notification-events)
 	AdminPortalURL        string // optional; e.g. https://admin.payup.ng (included in welcome email login link)
@@ -57,6 +58,10 @@ func LoadConfig() *Config {
 	if auditGrpc == "" {
 		auditGrpc = "audit-service:9003"
 	}
+	paymentGrpc := os.Getenv("PAYMENT_SERVICE_GRPC_ADDR")
+	if paymentGrpc == "" {
+		paymentGrpc = "payment-service:9004"
+	}
 	kycAdminKey := os.Getenv("KYC_ADMIN_API_KEY")
 	if kycAdminKey == "" {
 		kycAdminKey = os.Getenv("ADMIN_API_KEY")
@@ -76,7 +81,8 @@ func LoadConfig() *Config {
 		BootstrapLastName:    os.Getenv("ADMIN_BOOTSTRAP_LAST_NAME"),
 		UserServiceGrpcAddr:  userGrpc,
 		KYCServiceGrpcAddr:   kycGrpc,
-		AuditServiceGrpcAddr: auditGrpc,
+		AuditServiceGrpcAddr:  auditGrpc,
+		PaymentServiceGrpcAddr: paymentGrpc,
 		KYCAdminAPIKey:       kycAdminKey,
 		KafkaBroker:          kafkaBroker,
 		AdminPortalURL:       portalURL,

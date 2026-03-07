@@ -305,3 +305,109 @@ var UserServiceForAdmin_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "proto/user/user.proto",
 }
+
+const (
+	UserServiceForPayment_ValidateTransfer_FullMethodName = "/user.UserServiceForPayment/ValidateTransfer"
+)
+
+// UserServiceForPaymentClient is the client API for UserServiceForPayment service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// UserServiceForPayment is used by Payment service to validate transfer (PIN, restricted, limits, paused).
+type UserServiceForPaymentClient interface {
+	ValidateTransfer(ctx context.Context, in *ValidateTransferRequest, opts ...grpc.CallOption) (*ValidateTransferResponse, error)
+}
+
+type userServiceForPaymentClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewUserServiceForPaymentClient(cc grpc.ClientConnInterface) UserServiceForPaymentClient {
+	return &userServiceForPaymentClient{cc}
+}
+
+func (c *userServiceForPaymentClient) ValidateTransfer(ctx context.Context, in *ValidateTransferRequest, opts ...grpc.CallOption) (*ValidateTransferResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ValidateTransferResponse)
+	err := c.cc.Invoke(ctx, UserServiceForPayment_ValidateTransfer_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// UserServiceForPaymentServer is the server API for UserServiceForPayment service.
+// All implementations must embed UnimplementedUserServiceForPaymentServer
+// for forward compatibility.
+//
+// UserServiceForPayment is used by Payment service to validate transfer (PIN, restricted, limits, paused).
+type UserServiceForPaymentServer interface {
+	ValidateTransfer(context.Context, *ValidateTransferRequest) (*ValidateTransferResponse, error)
+	mustEmbedUnimplementedUserServiceForPaymentServer()
+}
+
+// UnimplementedUserServiceForPaymentServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedUserServiceForPaymentServer struct{}
+
+func (UnimplementedUserServiceForPaymentServer) ValidateTransfer(context.Context, *ValidateTransferRequest) (*ValidateTransferResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ValidateTransfer not implemented")
+}
+func (UnimplementedUserServiceForPaymentServer) mustEmbedUnimplementedUserServiceForPaymentServer() {}
+func (UnimplementedUserServiceForPaymentServer) testEmbeddedByValue()                               {}
+
+// UnsafeUserServiceForPaymentServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to UserServiceForPaymentServer will
+// result in compilation errors.
+type UnsafeUserServiceForPaymentServer interface {
+	mustEmbedUnimplementedUserServiceForPaymentServer()
+}
+
+func RegisterUserServiceForPaymentServer(s grpc.ServiceRegistrar, srv UserServiceForPaymentServer) {
+	// If the following call panics, it indicates UnimplementedUserServiceForPaymentServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&UserServiceForPayment_ServiceDesc, srv)
+}
+
+func _UserServiceForPayment_ValidateTransfer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ValidateTransferRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceForPaymentServer).ValidateTransfer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserServiceForPayment_ValidateTransfer_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceForPaymentServer).ValidateTransfer(ctx, req.(*ValidateTransferRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// UserServiceForPayment_ServiceDesc is the grpc.ServiceDesc for UserServiceForPayment service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var UserServiceForPayment_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "user.UserServiceForPayment",
+	HandlerType: (*UserServiceForPaymentServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "ValidateTransfer",
+			Handler:    _UserServiceForPayment_ValidateTransfer_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "proto/user/user.proto",
+}

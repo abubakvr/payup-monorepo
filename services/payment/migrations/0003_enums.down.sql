@@ -1,0 +1,11 @@
+DROP TYPE IF EXISTS upgrade_final_status;
+DROP TYPE IF EXISTS upgrade_init_status;
+DROP TYPE IF EXISTS upgrade_method;
+DROP TYPE IF EXISTS webhook_proc_status;
+DROP TYPE IF EXISTS webhook_event_type;
+DROP TYPE IF EXISTS ledger_entry_type;
+DROP TYPE IF EXISTS txn_channel;
+DROP TYPE IF EXISTS txn_status;
+DROP TYPE IF EXISTS txn_direction;
+DROP TYPE IF EXISTS txn_type;
+DROP TYPE IF EXISTS wallet_status;

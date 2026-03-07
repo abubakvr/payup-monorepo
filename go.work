@@ -6,5 +6,6 @@ use (
 	./services/audit
 	./services/kyc
 	./services/notification
+	./services/payment
 	./services/user
 )

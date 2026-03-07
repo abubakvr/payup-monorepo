@@ -1,0 +1,9 @@
+DROP INDEX IF EXISTS idx_wallets_created_at;
+DROP INDEX IF EXISTS idx_wallets_tier;
+DROP INDEX IF EXISTS idx_wallets_status;
+DROP INDEX IF EXISTS idx_wallets_email_hash;
+DROP INDEX IF EXISTS idx_wallets_phone_hash;
+DROP INDEX IF EXISTS ux_wallets_customer_id_hash;
+DROP INDEX IF EXISTS ux_wallets_account_number_hash;
+DROP INDEX IF EXISTS ux_wallets_user_active;
+DROP TABLE IF EXISTS wallets;

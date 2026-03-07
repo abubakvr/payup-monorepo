@@ -24,14 +24,15 @@ type AdminController struct {
 	user                 *clients.UserAdminClient
 	kyc                  *clients.KYCAdminClient
 	audit                *clients.AuditAdminClient
+	payment              *clients.PaymentAdminClient
 	auditProducer        *kafka.AuditProducer
 	notificationProducer *kafka.NotificationProducer
 	portalURL            string
 	kycKey               string
 }
 
-func NewAdminController(svc *service.AdminService, user *clients.UserAdminClient, kyc *clients.KYCAdminClient, audit *clients.AuditAdminClient, auditProducer *kafka.AuditProducer, notificationProducer *kafka.NotificationProducer, portalURL, kycAdminKey string) *AdminController {
-	return &AdminController{svc: svc, user: user, kyc: kyc, audit: audit, auditProducer: auditProducer, notificationProducer: notificationProducer, portalURL: portalURL, kycKey: kycAdminKey}
+func NewAdminController(svc *service.AdminService, user *clients.UserAdminClient, kyc *clients.KYCAdminClient, audit *clients.AuditAdminClient, payment *clients.PaymentAdminClient, auditProducer *kafka.AuditProducer, notificationProducer *kafka.NotificationProducer, portalURL, kycAdminKey string) *AdminController {
+	return &AdminController{svc: svc, user: user, kyc: kyc, audit: audit, payment: payment, auditProducer: auditProducer, notificationProducer: notificationProducer, portalURL: portalURL, kycKey: kycAdminKey}
 }
 
 // respondSuccess sends 200 with common ApiResponse envelope (status success, responseCode 01).
@@ -74,11 +75,21 @@ func (c *AdminController) Login(ctx *gin.Context) {
 	var req dto.LoginRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		log.Printf("admin login failed email=%s ip=%s device=%s reason=invalid_request", req.Email, clientIP, userAgent)
+		if c.auditProducer != nil {
+			_ = c.auditProducer.SendAudit("admin_login_failed", "admin", "", "", map[string]interface{}{"email": req.Email, "reason": "invalid_request"})
+		}
 		respondError(ctx, http.StatusBadRequest, "02", "invalid request")
 		return
 	}
-	token, expiresAt, mustChange, err := c.svc.Login(ctx.Request.Context(), req.Email, req.Password)
+	token, expiresAt, mustChange, adminID, err := c.svc.Login(ctx.Request.Context(), req.Email, req.Password)
 	if err != nil {
+		reason := "invalid_credentials"
+		if err != service.ErrInvalidCredentials {
+			reason = err.Error()
+		}
+		if c.auditProducer != nil {
+			_ = c.auditProducer.SendAudit("admin_login_failed", "admin", "", "", map[string]interface{}{"email": req.Email, "reason": reason})
+		}
 		if err == service.ErrInvalidCredentials {
 			log.Printf("admin login failed email=%s ip=%s device=%s reason=invalid_credentials", req.Email, clientIP, userAgent)
 			respondError(ctx, http.StatusUnauthorized, "AUTH_401", "invalid email or password")
@@ -87,6 +98,9 @@ func (c *AdminController) Login(ctx *gin.Context) {
 		log.Printf("admin login failed email=%s ip=%s device=%s err=%v", req.Email, clientIP, userAgent, err)
 		respondError(ctx, http.StatusInternalServerError, "99", err.Error())
 		return
+	}
+	if c.auditProducer != nil {
+		_ = c.auditProducer.SendAudit("admin_login_success", "admin", adminID, adminID, map[string]interface{}{"email": req.Email})
 	}
 	log.Printf("admin login success email=%s ip=%s device=%s", req.Email, clientIP, userAgent)
 	respondSuccess(ctx, "Login successful", dto.LoginResponse{
@@ -203,6 +217,60 @@ func (c *AdminController) GetMe(ctx *gin.Context) {
 		Role:               admin.Role,
 		MustChangePassword: admin.MustChangePassword,
 	})
+}
+
+// ListWallets GET /wallets (admin JWT) — list all user wallets with details via payment service gRPC (paginated: limit, offset).
+func (c *AdminController) ListWallets(ctx *gin.Context) {
+	if c.payment == nil {
+		respondError(ctx, http.StatusServiceUnavailable, "99", "payment service unavailable")
+		return
+	}
+	limit, offset := int32(50), int32(0)
+	if l := ctx.Query("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 {
+			limit = int32(n)
+			if limit > 100 {
+				limit = 100
+			}
+		}
+	}
+	if o := ctx.Query("offset"); o != "" {
+		if n, err := strconv.Atoi(o); err == nil && n >= 0 {
+			offset = int32(n)
+		}
+	}
+	resp, err := c.payment.ListWallets(ctx.Request.Context(), limit, offset)
+	if err != nil {
+		respondError(ctx, http.StatusInternalServerError, "99", err.Error())
+		return
+	}
+	if resp == nil {
+		respondSuccess(ctx, "ok", gin.H{"wallets": []interface{}{}, "limit": limit, "offset": offset})
+		return
+	}
+	// Map proto WalletDetail to simple maps for JSON (account_number, user_id, etc.)
+	wallets := make([]map[string]interface{}, 0, len(resp.Wallets))
+	for _, w := range resp.Wallets {
+		wallets = append(wallets, map[string]interface{}{
+			"id":                w.Id,
+			"user_id":           w.UserId,
+			"account_number":    w.AccountNumber,
+			"customer_id":       w.CustomerId,
+			"order_ref":         w.OrderRef,
+			"full_name":         w.FullName,
+			"phone":             w.Phone,
+			"email":             w.Email,
+			"mfb_code":          w.MfbCode,
+			"tier":              w.Tier,
+			"status":            w.Status,
+			"ledger_balance":    w.LedgerBalance,
+			"available_balance": w.AvailableBalance,
+			"provider":          w.Provider,
+			"created_at":        w.CreatedAt,
+			"updated_at":        w.UpdatedAt,
+		})
+	}
+	respondSuccess(ctx, "ok", gin.H{"wallets": wallets, "limit": limit, "offset": offset})
 }
 
 // ListUsers GET /users (admin JWT) — list all users via user service gRPC (paginated: page, page_size or limit, offset)
@@ -426,6 +494,58 @@ func (c *AdminController) SetUserRestricted(ctx *gin.Context) {
 	respondSuccess(ctx, "ok", map[string]interface{}{"restricted": body.Restricted})
 }
 
+// CreateUserWallet POST /users/:id/wallet (admin JWT) — create 9PSB wallet for user. Calls payment service gRPC; payment fetches KYC via gRPC, calls 9PSB, saves wallet and emits audit + success email via Kafka.
+func (c *AdminController) CreateUserWallet(ctx *gin.Context) {
+	claims, _ := auth.ClaimsFrom(ctx)
+	adminID := ""
+	if claims != nil {
+		adminID = claims.AdminID
+	}
+	if c.payment == nil {
+		respondError(ctx, http.StatusServiceUnavailable, "99", "payment service unavailable")
+		return
+	}
+	userID := ctx.Param("id")
+	if userID == "" {
+		respondError(ctx, http.StatusBadRequest, "02", "user id required")
+		return
+	}
+	resp, err := c.payment.CreateWallet(ctx.Request.Context(), userID)
+	if err != nil {
+		if c.auditProducer != nil {
+			_ = c.auditProducer.SendAudit("admin_wallet_creation_failed", "wallet", userID, adminID, map[string]interface{}{"user_id": userID, "error": err.Error()})
+		}
+		respondError(ctx, http.StatusInternalServerError, "99", err.Error())
+		return
+	}
+	if !resp.Success {
+		msg := resp.ErrorMessage
+		if msg == "" {
+			msg = "wallet creation failed"
+		}
+		if c.auditProducer != nil {
+			_ = c.auditProducer.SendAudit("admin_wallet_creation_failed", "wallet", userID, adminID, map[string]interface{}{"user_id": userID, "error": msg})
+		}
+		if strings.Contains(msg, "active wallet already exists") {
+			respondError(ctx, http.StatusConflict, "02", msg)
+			return
+		}
+		if strings.Contains(msg, "KYC not found") || strings.Contains(msg, "validation") {
+			respondError(ctx, http.StatusPreconditionFailed, "02", msg)
+			return
+		}
+		respondError(ctx, http.StatusBadRequest, "02", msg)
+		return
+	}
+	if c.auditProducer != nil {
+		_ = c.auditProducer.SendAudit("admin_wallet_created", "wallet", resp.AccountNumber, adminID, map[string]interface{}{"user_id": userID, "account_number": resp.AccountNumber})
+	}
+	respondCreated(ctx, "wallet created successfully", map[string]interface{}{
+		"user_id":        userID,
+		"account_number": resp.AccountNumber,
+	})
+}
+
 // GetUserKYC GET /users/:id/kyc (admin JWT) — full KYC for user via KYC service gRPC
 func (c *AdminController) GetUserKYC(ctx *gin.Context) {
 	if c.kyc == nil {
@@ -452,6 +572,37 @@ func (c *AdminController) GetUserKYC(ctx *gin.Context) {
 		return
 	}
 	respondSuccess(ctx, "ok", data)
+}
+
+// ApproveUserKYC POST /users/:id/kyc/approve (admin JWT) — sets KYC status to approved and sends success email to user. Used after wallet creation.
+func (c *AdminController) ApproveUserKYC(ctx *gin.Context) {
+	if c.kyc == nil {
+		respondError(ctx, http.StatusServiceUnavailable, "99", "kyc service unavailable")
+		return
+	}
+	userID := ctx.Param("id")
+	if userID == "" {
+		respondError(ctx, http.StatusBadRequest, "02", "user id required")
+		return
+	}
+	resp, err := c.kyc.ApproveKYC(ctx.Request.Context(), userID)
+	if err != nil {
+		respondError(ctx, http.StatusInternalServerError, "99", err.Error())
+		return
+	}
+	if !resp.Success {
+		msg := resp.Message
+		if msg == "" {
+			msg = "KYC approval failed"
+		}
+		if strings.Contains(msg, "not found") {
+			respondError(ctx, http.StatusNotFound, "02", msg)
+			return
+		}
+		respondError(ctx, http.StatusBadRequest, "02", msg)
+		return
+	}
+	respondSuccess(ctx, "KYC approved successfully; user has been notified by email", map[string]interface{}{"user_id": userID, "status": "approved"})
 }
 
 // GetUserKYCImage GET /users/:id/kyc/images/:type (admin JWT) — proxies to KYC admin HTTP image endpoint using X-Admin-Key (returns binary; no ApiResponse envelope).

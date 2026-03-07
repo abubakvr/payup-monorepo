@@ -1,0 +1,12 @@
+DROP INDEX IF EXISTS idx_transactions_created_at;
+DROP INDEX IF EXISTS idx_transactions_beneficiary_acct_hash;
+DROP INDEX IF EXISTS idx_transactions_parent_txn;
+DROP INDEX IF EXISTS idx_transactions_type_status;
+DROP INDEX IF EXISTS idx_transactions_unreconciled;
+DROP INDEX IF EXISTS idx_transactions_direction_type_date;
+DROP INDEX IF EXISTS idx_transactions_status_date;
+DROP INDEX IF EXISTS idx_transactions_provider_ref;
+DROP INDEX IF EXISTS idx_transactions_wallet_date;
+DROP INDEX IF EXISTS ux_transactions_idempotency;
+DROP INDEX IF EXISTS ux_transactions_ref;
+DROP TABLE IF EXISTS transactions;

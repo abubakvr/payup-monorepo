@@ -22,6 +22,8 @@ const (
 	KYCService_GetKYCStatus_FullMethodName       = "/kyc.KYCService/GetKYCStatus"
 	KYCService_GetFullKYCForAdmin_FullMethodName = "/kyc.KYCService/GetFullKYCForAdmin"
 	KYCService_CountProfiles_FullMethodName      = "/kyc.KYCService/CountProfiles"
+	KYCService_GetKYCForWallet_FullMethodName    = "/kyc.KYCService/GetKYCForWallet"
+	KYCService_ApproveKYC_FullMethodName         = "/kyc.KYCService/ApproveKYC"
 )
 
 // KYCServiceClient is the client API for KYCService service.
@@ -33,6 +35,10 @@ type KYCServiceClient interface {
 	GetFullKYCForAdmin(ctx context.Context, in *GetFullKYCForAdminRequest, opts ...grpc.CallOption) (*GetFullKYCForAdminResponse, error)
 	// CountProfiles returns the number of KYC profiles, optionally filtered by status and/or kyc_level. Used by Admin kyc-list total.
 	CountProfiles(ctx context.Context, in *CountProfilesRequest, opts ...grpc.CallOption) (*CountProfilesResponse, error)
+	// GetKYCForWallet returns full (unmasked) KYC fields required for 9PSB open_wallet. Used by Payment service only.
+	GetKYCForWallet(ctx context.Context, in *GetKYCForWalletRequest, opts ...grpc.CallOption) (*GetKYCForWalletResponse, error)
+	// ApproveKYC sets the user's KYC overall_status to approved and triggers success email. Used by Admin after wallet creation.
+	ApproveKYC(ctx context.Context, in *ApproveKYCRequest, opts ...grpc.CallOption) (*ApproveKYCResponse, error)
 }
 
 type kYCServiceClient struct {
@@ -73,6 +79,26 @@ func (c *kYCServiceClient) CountProfiles(ctx context.Context, in *CountProfilesR
 	return out, nil
 }
 
+func (c *kYCServiceClient) GetKYCForWallet(ctx context.Context, in *GetKYCForWalletRequest, opts ...grpc.CallOption) (*GetKYCForWalletResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetKYCForWalletResponse)
+	err := c.cc.Invoke(ctx, KYCService_GetKYCForWallet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kYCServiceClient) ApproveKYC(ctx context.Context, in *ApproveKYCRequest, opts ...grpc.CallOption) (*ApproveKYCResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ApproveKYCResponse)
+	err := c.cc.Invoke(ctx, KYCService_ApproveKYC_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // KYCServiceServer is the server API for KYCService service.
 // All implementations must embed UnimplementedKYCServiceServer
 // for forward compatibility.
@@ -82,6 +108,10 @@ type KYCServiceServer interface {
 	GetFullKYCForAdmin(context.Context, *GetFullKYCForAdminRequest) (*GetFullKYCForAdminResponse, error)
 	// CountProfiles returns the number of KYC profiles, optionally filtered by status and/or kyc_level. Used by Admin kyc-list total.
 	CountProfiles(context.Context, *CountProfilesRequest) (*CountProfilesResponse, error)
+	// GetKYCForWallet returns full (unmasked) KYC fields required for 9PSB open_wallet. Used by Payment service only.
+	GetKYCForWallet(context.Context, *GetKYCForWalletRequest) (*GetKYCForWalletResponse, error)
+	// ApproveKYC sets the user's KYC overall_status to approved and triggers success email. Used by Admin after wallet creation.
+	ApproveKYC(context.Context, *ApproveKYCRequest) (*ApproveKYCResponse, error)
 	mustEmbedUnimplementedKYCServiceServer()
 }
 
@@ -100,6 +130,12 @@ func (UnimplementedKYCServiceServer) GetFullKYCForAdmin(context.Context, *GetFul
 }
 func (UnimplementedKYCServiceServer) CountProfiles(context.Context, *CountProfilesRequest) (*CountProfilesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CountProfiles not implemented")
+}
+func (UnimplementedKYCServiceServer) GetKYCForWallet(context.Context, *GetKYCForWalletRequest) (*GetKYCForWalletResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetKYCForWallet not implemented")
+}
+func (UnimplementedKYCServiceServer) ApproveKYC(context.Context, *ApproveKYCRequest) (*ApproveKYCResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ApproveKYC not implemented")
 }
 func (UnimplementedKYCServiceServer) mustEmbedUnimplementedKYCServiceServer() {}
 func (UnimplementedKYCServiceServer) testEmbeddedByValue()                    {}
@@ -176,6 +212,42 @@ func _KYCService_CountProfiles_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KYCService_GetKYCForWallet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetKYCForWalletRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KYCServiceServer).GetKYCForWallet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KYCService_GetKYCForWallet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KYCServiceServer).GetKYCForWallet(ctx, req.(*GetKYCForWalletRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KYCService_ApproveKYC_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApproveKYCRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KYCServiceServer).ApproveKYC(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KYCService_ApproveKYC_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KYCServiceServer).ApproveKYC(ctx, req.(*ApproveKYCRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // KYCService_ServiceDesc is the grpc.ServiceDesc for KYCService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -194,6 +266,14 @@ var KYCService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CountProfiles",
 			Handler:    _KYCService_CountProfiles_Handler,
+		},
+		{
+			MethodName: "GetKYCForWallet",
+			Handler:    _KYCService_GetKYCForWallet_Handler,
+		},
+		{
+			MethodName: "ApproveKYC",
+			Handler:    _KYCService_ApproveKYC_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

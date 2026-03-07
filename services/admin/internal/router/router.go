@@ -27,8 +27,11 @@ func Setup(ctrl *controller.AdminController) *gin.Engine {
 		// Portal data via gRPC from user, KYC, audit services
 		protected.GET("/users", ctrl.ListUsers)
 		protected.GET("/users/:id", ctrl.GetUser)
+		protected.GET("/wallets", ctrl.ListWallets)
 		protected.POST("/users/:id/restrict", ctrl.SetUserRestricted)
+		protected.POST("/users/:id/wallet", ctrl.CreateUserWallet)
 		protected.GET("/users/:id/kyc", ctrl.GetUserKYC)
+		protected.POST("/users/:id/kyc/approve", ctrl.ApproveUserKYC)
 		protected.GET("/users/:id/kyc/images/:type", ctrl.GetUserKYCImage)
 		protected.PUT("/users/:id/kyc/steps/:step/rejection-message", ctrl.SetStepRejectionMessage)
 		protected.GET("/kyc-list", ctrl.ListKYC)

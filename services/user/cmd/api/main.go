@@ -45,6 +45,7 @@ func main() {
 		srv := grpclib.NewServer()
 		userpb.RegisterUserServiceForKYCServer(srv, grpc.NewKYCUserServer(userRepo))
 		userpb.RegisterUserServiceForAdminServer(srv, grpc.NewAdminUserServer(userRepo, userSvc))
+		userpb.RegisterUserServiceForPaymentServer(srv, grpc.NewPaymentUserServer(userSvc))
 		log.Printf("User gRPC (KYC) listening on port %s", cfg.GrpcPort)
 		if err := srv.Serve(lis); err != nil {
 			log.Fatalf("grpc serve: %v", err)

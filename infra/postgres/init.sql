@@ -32,3 +32,12 @@ GRANT ALL PRIVILEGES ON DATABASE admin_db TO admin_service;
 GRANT USAGE ON SCHEMA public TO admin_service;
 GRANT CREATE ON SCHEMA public TO admin_service;
 
+-- PAYMENT SERVICE
+\c postgres
+CREATE DATABASE payment_db;
+CREATE USER payment_service WITH PASSWORD :'payment_password';
+GRANT ALL PRIVILEGES ON DATABASE payment_db TO payment_service;
+\c payment_db
+GRANT USAGE ON SCHEMA public TO payment_service;
+GRANT CREATE ON SCHEMA public TO payment_service;
+

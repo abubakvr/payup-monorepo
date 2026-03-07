@@ -56,3 +56,40 @@ func (s *KYCAdminServer) CountProfiles(ctx context.Context, req *kycpb.CountProf
 	}
 	return &kycpb.CountProfilesResponse{Count: count}, nil
 }
+
+func (s *KYCAdminServer) GetKYCForWallet(ctx context.Context, req *kycpb.GetKYCForWalletRequest) (*kycpb.GetKYCForWalletResponse, error) {
+	if req == nil || req.UserId == "" {
+		return &kycpb.GetKYCForWalletResponse{Found: false}, nil
+	}
+	data, err := s.svc.GetKYCForWallet(req.UserId)
+	if err != nil || data == nil {
+		return &kycpb.GetKYCForWalletResponse{Found: false}, nil
+	}
+	return &kycpb.GetKYCForWalletResponse{
+		Found:              true,
+		Bvn:                data.BVN,
+		DateOfBirth:        data.DateOfBirth,
+		Gender:             data.Gender,
+		LastName:           data.LastName,
+		OtherNames:         data.OtherNames,
+		PhoneNo:            data.PhoneNo,
+		PlaceOfBirth:       data.PlaceOfBirth,
+		Address:            data.Address,
+		NationalIdentityNo: data.NationalIdentityNo,
+		NinUserId:          data.NinUserID,
+		NextOfKinPhoneNo:   data.NextOfKinPhoneNo,
+		NextOfKinName:      data.NextOfKinName,
+		Email:              data.Email,
+	}, nil
+}
+
+func (s *KYCAdminServer) ApproveKYC(ctx context.Context, req *kycpb.ApproveKYCRequest) (*kycpb.ApproveKYCResponse, error) {
+	if req == nil || req.UserId == "" {
+		return &kycpb.ApproveKYCResponse{Success: false, Message: "user_id required"}, nil
+	}
+	success, errMsg := s.svc.ApproveKYC(ctx, req.UserId)
+	if !success {
+		return &kycpb.ApproveKYCResponse{Success: false, Message: errMsg}, nil
+	}
+	return &kycpb.ApproveKYCResponse{Success: true}, nil
+}

@@ -75,6 +75,18 @@ func main() {
 	consumer := kafka.NewConsumer(brokers)
 	go consumer.Start()
 
+	walletConsumer := kafka.NewWalletEventsConsumer(brokers, func(ctx context.Context, userID string) {
+		if err := repo.SetKYCLevel(ctx, userID, 1); err != nil {
+			log.Printf("kyc: set kyc_level=1 after wallet_created: %v", err)
+		} else {
+			log.Printf("kyc: set kyc_level=1 for user %s (wallet created)", userID)
+		}
+	})
+	if walletConsumer != nil {
+		go walletConsumer.Start()
+		log.Printf("KYC wallet-events consumer started (sets kyc_level=1 on wallet_created)")
+	}
+
 	// gRPC server for Admin service (GetFullKYCForAdmin, GetKYCStatus)
 	grpcPort := "9002"
 	if p := strings.TrimSpace(os.Getenv("KYC_GRPC_PORT")); p != "" {

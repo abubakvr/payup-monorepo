@@ -55,20 +55,20 @@ func (s *AdminService) BootstrapSuperAdmin(ctx context.Context, email, pass, fir
 	return true, nil
 }
 
-// Login returns access token and expiry. If must_change_password, client must call ChangePassword before using other endpoints.
-func (s *AdminService) Login(ctx context.Context, email, pass string) (token string, expiresAt interface{}, mustChangePassword bool, err error) {
+// Login returns access token, expiry, mustChangePassword, and adminID. If must_change_password, client must call ChangePassword before using other endpoints.
+func (s *AdminService) Login(ctx context.Context, email, pass string) (token string, expiresAt interface{}, mustChangePassword bool, adminID string, err error) {
 	a, err := s.repo.GetByEmail(email)
 	if err != nil || a == nil {
-		return "", nil, false, ErrInvalidCredentials
+		return "", nil, false, "", ErrInvalidCredentials
 	}
 	if !password.Check(pass, a.PasswordHash) {
-		return "", nil, false, ErrInvalidCredentials
+		return "", nil, false, "", ErrInvalidCredentials
 	}
 	token, exp, err := auth.IssueToken(a.ID, a.Email, a.Role, a.MustChangePassword)
 	if err != nil {
-		return "", nil, false, err
+		return "", nil, false, "", err
 	}
-	return token, exp, a.MustChangePassword, nil
+	return token, exp, a.MustChangePassword, a.ID, nil
 }
 
 // ChangePassword updates password and clears must_change_password. Used on first login or when changing password.

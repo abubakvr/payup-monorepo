@@ -285,6 +285,23 @@ type AdminKYCPhone struct {
 	Verified    bool   `json:"verified"`
 }
 
+// WalletKYCData holds full (unmasked) KYC fields for 9PSB open_wallet. Used by Payment service via GetKYCForWallet gRPC.
+type WalletKYCData struct {
+	BVN                string
+	DateOfBirth        string // DD/MM/YYYY
+	Gender             int32  // 1 = Male, 2 = Female
+	LastName           string
+	OtherNames         string
+	PhoneNo            string
+	PlaceOfBirth       string
+	Address            string
+	NationalIdentityNo string
+	NinUserID          string
+	NextOfKinPhoneNo   string
+	NextOfKinName      string
+	Email              string
+}
+
 // ReverseGeocodeResponse returned by GET/POST /address/reverse-geocode. Matches frontend ReverseGeocodeData.
 // All address/coordinate fields are always present so the envelope shape is consistent (0 or "" when no data).
 type ReverseGeocodeResponse struct {

@@ -160,15 +160,47 @@ func (s *UserService) Login(ctx context.Context, email, password string) (*Login
 	}
 	user, err := s.userRepo.Login(loginRequest)
 	if err != nil {
+		_ = s.producer.SendAuditLog(kafka.AuditLogParams{
+			Service:  "user",
+			Action:   "login_failed",
+			Entity:   "user",
+			EntityID: "",
+			UserID:   nil,
+			Metadata: map[string]interface{}{"email": email, "reason": "login_error"},
+		})
 		return nil, err
 	}
 	if user == nil {
+		_ = s.producer.SendAuditLog(kafka.AuditLogParams{
+			Service:  "user",
+			Action:   "login_failed",
+			Entity:   "user",
+			EntityID: "",
+			UserID:   nil,
+			Metadata: map[string]interface{}{"email": email, "reason": "invalid_credentials"},
+		})
 		return nil, repository.ErrInvalidCredentials
 	}
 	if !user.EmailVerified {
+		_ = s.producer.SendAuditLog(kafka.AuditLogParams{
+			Service:  "user",
+			Action:   "login_failed",
+			Entity:   "user",
+			EntityID: user.ID,
+			UserID:   &user.ID,
+			Metadata: map[string]interface{}{"email": email, "reason": "email_not_verified"},
+		})
 		return nil, ErrEmailNotVerified
 	}
 	if !passwd.CheckPassword(loginRequest.Password, user.PasswordHash) {
+		_ = s.producer.SendAuditLog(kafka.AuditLogParams{
+			Service:  "user",
+			Action:   "login_failed",
+			Entity:   "user",
+			EntityID: user.ID,
+			UserID:   &user.ID,
+			Metadata: map[string]interface{}{"email": email, "reason": "invalid_password"},
+		})
 		return nil, repository.ErrInvalidCredentials
 	}
 
@@ -346,6 +378,45 @@ func (s *UserService) GetUserForAdmin(ctx context.Context, userID string) (*mode
 	// Don't expose password
 	user.PasswordHash = ""
 	return user, nil
+}
+
+// ValidateTransfer checks whether the user is allowed to attempt a transfer (used by payment service).
+// Checks: user exists, not banking restricted, transfers not paused, PIN set and matches.
+// Returns allowed, message, and daily/monthly limits (0 = not set) so payment can enforce limits.
+func (s *UserService) ValidateTransfer(ctx context.Context, userID string, amount float64, pin string) (allowed bool, message string, dailyLimit, monthlyLimit float64) {
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil {
+		return false, "user lookup failed", 0, 0
+	}
+	if user == nil {
+		return false, "user not found", 0, 0
+	}
+	if user.BankingRestricted {
+		return false, "account restricted", 0, 0
+	}
+	settings, err := s.userRepo.GetOrCreateUserSettings(userID)
+	if err != nil || settings == nil {
+		return false, "settings not found", 0, 0
+	}
+	if settings.TransfersDisabled {
+		return false, "transfers paused", 0, 0
+	}
+	if settings.PinHash == nil || *settings.PinHash == "" {
+		return false, "PIN not set", 0, 0
+	}
+	if pin == "" {
+		return false, "PIN required", 0, 0
+	}
+	if !passwd.CheckPassword(pin, *settings.PinHash) {
+		return false, "invalid PIN", 0, 0
+	}
+	if settings.DailyTransferLimit != nil {
+		dailyLimit = *settings.DailyTransferLimit
+	}
+	if settings.MonthlyTransferLimit != nil {
+		monthlyLimit = *settings.MonthlyTransferLimit
+	}
+	return true, "", dailyLimit, monthlyLimit
 }
 
 // SetUserRestricted sets the user's banking_restricted flag (admin only). Sends audit event and notification email when restricting.

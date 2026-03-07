@@ -1433,6 +1433,166 @@ func (s *KYCService) CountProfiles(status string, kycLevel *int32) (int64, error
 	return s.repo.CountProfiles(status, kycLevel)
 }
 
+// ApproveKYC sets the user's KYC overall_status to "approved" and sends a success email. Used by Admin after wallet creation.
+func (s *KYCService) ApproveKYC(ctx context.Context, userID string) (success bool, errMsg string) {
+	profile, err := s.repo.GetProfileByUserID(userID)
+	if err != nil {
+		return false, "failed to load KYC profile"
+	}
+	if profile == nil {
+		return false, "KYC profile not found"
+	}
+	if err := s.repo.SetOverallStatusByUserID(ctx, userID, "approved"); err != nil {
+		return false, "failed to update KYC status"
+	}
+	email := ""
+	if s.userClient != nil {
+		if u, _ := s.userClient.GetUserForKYC(ctx, userID); u != nil && u.Found {
+			email = u.Email
+		}
+	}
+	if email != "" && s.notifier != nil {
+		subject := "Your KYC has been approved"
+		html := `<p>Congratulations! Your KYC verification has been successfully approved.</p>` +
+			`<p>You now have full access to your PayUp account and wallet.</p>` +
+			`<p>Thank you for completing the verification process.</p>`
+		_ = s.notifier.Send(kafka.NotificationEvent{
+			Type:    "kyc_approved",
+			Channel: "email",
+			Metadata: map[string]interface{}{
+				"to":      email,
+				"subject": subject,
+				"html":    html,
+			},
+		})
+	}
+	return true, ""
+}
+
+// GetKYCForWallet returns full (unmasked) KYC data for 9PSB open_wallet. Used by Payment service via gRPC.
+func (s *KYCService) GetKYCForWallet(userID string) (*dto.WalletKYCData, error) {
+	p, err := s.getProfile(userID)
+	if err != nil || p == nil {
+		return nil, err
+	}
+	out := &dto.WalletKYCData{NinUserID: userID}
+	// BVN: full value + DOB, gender, phone, names
+	if bvn, _ := s.repo.GetBVNByProfileID(p.ID); bvn != nil {
+		bvnStr, _ := s.repo.Decrypt(bvn.BVNEncrypted)
+		out.BVN = bvnStr
+		fullName, _ := s.repo.Decrypt(bvn.FullNameEncrypted)
+		dob, _ := s.repo.Decrypt(bvn.DateOfBirthEncrypted)
+		out.DateOfBirth = formatDOBFor9PSB(dob)
+		phone, _ := s.repo.Decrypt(bvn.PhoneEncrypted)
+		out.PhoneNo = phone
+		gender, _ := s.repo.Decrypt(bvn.GenderEncrypted)
+		out.Gender = genderTo9PSB(gender)
+		// fullName may be "LastName OtherNames" or "First Last" - use as otherNames if no NIN
+		if fullName != "" && out.LastName == "" {
+			out.OtherNames = fullName
+		}
+	}
+	// NIN: names, NIN number, DOB, phone, email
+	if nin, _ := s.repo.GetNINByProfileID(p.ID); nin != nil {
+		last, _ := s.repo.Decrypt(nin.LastNameEncrypted)
+		if last != "" {
+			out.LastName = last
+		}
+		first, _ := s.repo.Decrypt(nin.FirstNameEncrypted)
+		middle, _ := s.repo.Decrypt(nin.MiddleNameEncrypted)
+		if first != "" || middle != "" {
+			out.OtherNames = strings.TrimSpace(first + " " + middle)
+		}
+		ninStr, _ := s.repo.Decrypt(nin.NINEncrypted)
+		out.NationalIdentityNo = ninStr
+		dob, _ := s.repo.Decrypt(nin.DateOfBirthEncrypted)
+		if out.DateOfBirth == "" && dob != "" {
+			out.DateOfBirth = formatDOBFor9PSB(dob)
+		}
+		phone, _ := s.repo.Decrypt(nin.PhoneEncrypted)
+		if out.PhoneNo == "" && phone != "" {
+			out.PhoneNo = phone
+		}
+		email, _ := s.repo.Decrypt(nin.EmailEncrypted)
+		out.Email = email
+	}
+	// Personal: DOB, gender, next of kin
+	if pers, _ := s.repo.GetPersonalByProfileID(p.ID); pers != nil {
+		dob, _ := s.repo.Decrypt(pers.DateOfBirthEncrypted)
+		if out.DateOfBirth == "" && dob != "" {
+			out.DateOfBirth = formatDOBFor9PSB(dob)
+		}
+		gender, _ := s.repo.Decrypt(pers.GenderEncrypted)
+		if out.Gender == 0 {
+			out.Gender = genderTo9PSB(gender)
+		}
+		nokName, _ := s.repo.Decrypt(pers.NextOfKinNameEncrypted)
+		out.NextOfKinName = nokName
+		nokPhone, _ := s.repo.Decrypt(pers.NextOfKinPhoneEncrypted)
+		out.NextOfKinPhoneNo = nokPhone
+	}
+	// Address: full address string; use city or state as place of birth if missing
+	if addr, _ := s.repo.GetAddressByProfileID(p.ID); addr != nil {
+		full, _ := s.repo.Decrypt(addr.FullAddressEncrypted)
+		out.Address = full
+		if full == "" {
+			house, _ := s.repo.Decrypt(addr.HouseNumberEncrypted)
+			street, _ := s.repo.Decrypt(addr.StreetEncrypted)
+			city, _ := s.repo.Decrypt(addr.CityEncrypted)
+			state, _ := s.repo.Decrypt(addr.StateEncrypted)
+			out.Address = strings.TrimSpace(strings.Join([]string{house, street, city, state}, ", "))
+		}
+		if out.PlaceOfBirth == "" {
+			city, _ := s.repo.Decrypt(addr.CityEncrypted)
+			if city != "" {
+				out.PlaceOfBirth = city
+			} else {
+				state, _ := s.repo.Decrypt(addr.StateEncrypted)
+				out.PlaceOfBirth = state
+			}
+		}
+	}
+	// KYC Phone step (verified phone) if still missing
+	if out.PhoneNo == "" {
+		if ph, _ := s.repo.GetPhoneByProfileID(p.ID); ph != nil && len(ph.PhoneEncrypted) > 0 {
+			out.PhoneNo, _ = s.repo.Decrypt(ph.PhoneEncrypted)
+		}
+	}
+	return out, nil
+}
+
+// formatDOBFor9PSB returns DD/MM/YYYY. Accepts YYYY-MM-DD or DD/MM/YYYY.
+func formatDOBFor9PSB(dob string) string {
+	dob = strings.TrimSpace(dob)
+	if dob == "" {
+		return ""
+	}
+	// Already DD/MM/YYYY
+	if len(dob) == 10 && dob[2] == '/' && dob[5] == '/' {
+		return dob
+	}
+	// YYYY-MM-DD
+	if len(dob) >= 10 && dob[4] == '-' && dob[7] == '-' {
+		parts := strings.Split(dob[:10], "-")
+		if len(parts) == 3 {
+			return parts[2] + "/" + parts[1] + "/" + parts[0]
+		}
+	}
+	return dob
+}
+
+// genderTo9PSB returns 1 for Male, 2 for Female.
+func genderTo9PSB(g string) int32 {
+	g = strings.ToLower(strings.TrimSpace(g))
+	switch g {
+	case "male", "m", "1":
+		return 1
+	case "female", "f", "2":
+		return 2
+	}
+	return 1
+}
+
 // maskLast4 returns a string like "*******1234" (last 4 chars visible, rest stars; total length ~11 for BVN/NIN).
 func maskLast4(s string, totalLen int) string {
 	if len(s) < 4 {

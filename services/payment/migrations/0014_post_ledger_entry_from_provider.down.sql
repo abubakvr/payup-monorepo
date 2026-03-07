@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS post_ledger_entry_from_provider(UUID, UUID, DECIMAL, DECIMAL, DECIMAL, VARCHAR);

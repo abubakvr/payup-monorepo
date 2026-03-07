@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -77,6 +78,20 @@ func (r *KYCRepository) GetOrCreateProfile(userID string) (*model.KYCProfile, er
 		return p, nil
 	}
 	return r.CreateProfile(userID)
+}
+
+// SetKYCLevel updates kyc_level for the user's profile (e.g. set to 1 when wallet is created). Used by wallet-events consumer.
+func (r *KYCRepository) SetKYCLevel(ctx context.Context, userID string, level int) error {
+	query := `UPDATE kyc_profile SET kyc_level = $1, updated_at = $2 WHERE user_id = $3`
+	_, err := r.db.ExecContext(ctx, query, level, time.Now(), userID)
+	return err
+}
+
+// SetOverallStatusByUserID sets overall_status for the user's KYC profile (e.g. "approved"). Used by admin approve action.
+func (r *KYCRepository) SetOverallStatusByUserID(ctx context.Context, userID string, status string) error {
+	query := `UPDATE kyc_profile SET overall_status = $1, updated_at = $2 WHERE user_id = $3`
+	_, err := r.db.ExecContext(ctx, query, status, time.Now(), userID)
+	return err
 }
 
 func (r *KYCRepository) GetProfileByUserID(userID string) (*model.KYCProfile, error) {
@@ -654,14 +669,14 @@ func (r *KYCRepository) CreateAddressGeolocation(g *model.KYCAddressGeolocation)
 
 func nullEmpty(s string) interface{} {
 	if s == "" {
-		return nil
+	return nil
 	}
 	return s
 }
 
 func jsonOrNull(b []byte) interface{} {
 	if len(b) == 0 {
-		return nil
+	return nil
 	}
 	return b
 }

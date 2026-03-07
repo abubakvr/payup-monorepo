@@ -10,6 +10,40 @@ service KYCService {
     rpc GetFullKYCForAdmin (GetFullKYCForAdminRequest) returns (GetFullKYCForAdminResponse);
     // CountProfiles returns the number of KYC profiles, optionally filtered by status and/or kyc_level. Used by Admin kyc-list total.
     rpc CountProfiles (CountProfilesRequest) returns (CountProfilesResponse);
+    // GetKYCForWallet returns full (unmasked) KYC fields required for 9PSB open_wallet. Used by Payment service only.
+    rpc GetKYCForWallet (GetKYCForWalletRequest) returns (GetKYCForWalletResponse);
+    // ApproveKYC sets the user's KYC overall_status to approved and triggers success email. Used by Admin after wallet creation.
+    rpc ApproveKYC (ApproveKYCRequest) returns (ApproveKYCResponse);
+}
+
+message ApproveKYCRequest {
+    string user_id = 1;
+}
+
+message ApproveKYCResponse {
+    bool success = 1;
+    string message = 2;  // error message when success is false
+}
+
+message GetKYCForWalletRequest {
+    string user_id = 1;
+}
+
+message GetKYCForWalletResponse {
+    bool found = 1;
+    string bvn = 2;
+    string date_of_birth = 3;   // DD/MM/YYYY
+    int32 gender = 4;           // 1 = Male, 2 = Female
+    string last_name = 5;
+    string other_names = 6;    // first + middle
+    string phone_no = 7;
+    string place_of_birth = 8;
+    string address = 9;
+    string national_identity_no = 10;
+    string nin_user_id = 11;
+    string next_of_kin_phone_no = 12;
+    string next_of_kin_name = 13;
+    string email = 14;
 }
 
 message GetKYCStatusRequest {
